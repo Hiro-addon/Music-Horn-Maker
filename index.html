@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Music Horn Maker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.js"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;padding:20px;background:#f5f6f8;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -150,6 +150,7 @@ volume:Number(card.querySelector(".horn-volume").value)
 
 function validate(horns){
 if(horns.length===0)throw new Error("ホーンを1つ以上追加してね");
+
 const ids=new Set();
 
 for(let i=0;i<horns.length;i++){
@@ -183,7 +184,10 @@ dependencies
 
 async function convertHorn(horn,index,total){
 const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-if(!AudioContextClass)throw new Error("このブラウザは音声読み込みに対応していないよ");
+
+if(!AudioContextClass){
+throw new Error("このブラウザは音声読み込みに対応していないよ");
+}
 
 const audioContext=new AudioContextClass();
 
@@ -203,6 +207,7 @@ const channels=audioBuffer.numberOfChannels;
 const segmentCount=Math.ceil(duration/INTERVAL);
 
 if(segmentCount<1)throw new Error(`${horn.name} の音声が空だよ`);
+if(channels>2)throw new Error(`${horn.name} は3チャンネル以上の音源に対応していないよ`);
 
 const segments=[];
 
@@ -223,26 +228,34 @@ audioBuffer.getChannelData(channel).slice(startSample,endSample)
 );
 }
 
-const encoder=new OggVorbisEncoder(sampleRate,channels,0.5);
+let encoder;
 
 try{
+encoder=new OggVorbisEncoder(sampleRate,channels,0.5);
 encoder.encode(channelData);
+
 const blob=encoder.finish("audio/ogg");
 const data=new Uint8Array(await blob.arrayBuffer());
+
+if(data.length===0)throw new Error("変換後のデータが空だよ");
 
 segments.push({
 hornId:horn.id,
 fileName:`${horn.id}_${i+1}.ogg`,
 data
 });
+
 }catch(error){
-encoder.cancel();
+if(encoder){
+try{encoder.cancel()}catch(e){}
+}
 throw new Error(`${horn.name} のOGG変換に失敗したよ: ${error.message||error}`);
 }
 
 const progress=((index+(i+1)/segmentCount)/total)*80;
 setProgress(progress);
 setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
+
 await new Promise(resolve=>setTimeout(resolve,0));
 }
 
@@ -285,9 +298,7 @@ volume:horn.volume
 }))
 };
 
-for(const segment of segments){
-soundFiles.push(segment);
-}
+soundFiles.push(...segments);
 }
 
 setStatus("リソースパックを作成中...");
