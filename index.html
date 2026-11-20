@@ -6,7 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Music Horn Maker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<script>
+var OggVorbisEncoderConfig={
+memoryInitializerPrefixURL:"https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/"
+};
+</script>
+<script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.min.js"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;padding:20px;background:#f5f6f8;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -58,12 +63,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <button class="generate" id="generateBtn" type="button">mcaddonを生成</button>
 <div class="progress"><div class="progress-bar" id="bar"></div></div>
 <div class="status" id="status">準備完了</div>
-<div class="note">音源ファイルは自動でOGG形式に変換され、0.2秒間隔で分割されるよ。最後の余り部分は切り捨てず、実際の長さで保存するよ。</div>
+<div class="note">音源はOGG Vorbis形式に変換され、0.2秒間隔で分割されるよ。最後の余り部分も保存されるよ。</div>
 </div>
 </div>
 
 <script>
-let ffmpeg=null;
 const INTERVAL=0.2;
 const $=id=>document.getElementById(id);
 
@@ -167,119 +171,6 @@ if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(
 }
 }
 
-async function loadFFmpeg(){
-if(ffmpeg)return;
-setStatus("変換エンジンを読み込み中...");
-const {createFFmpeg}=FFmpeg;
-ffmpeg=createFFmpeg({
-log:false,
-corePath:"https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
-});
-await ffmpeg.load();
-}
-
-function audioBufferToWav(buffer,start,end){
-const sampleRate=buffer.sampleRate;
-const channels=buffer.numberOfChannels;
-const startSample=Math.floor(start*sampleRate);
-const endSample=Math.min(buffer.length,Math.round(end*sampleRate));
-const length=endSample-startSample;
-
-if(length<=0)throw new Error("音声の分割に失敗したよ");
-
-const bytesPerSample=2;
-const blockAlign=channels*bytesPerSample;
-const dataSize=length*blockAlign;
-const arrayBuffer=new ArrayBuffer(44+dataSize);
-const view=new DataView(arrayBuffer);
-
-function writeString(offset,string){
-for(let i=0;i<string.length;i++){
-view.setUint8(offset+i,string.charCodeAt(i));
-}
-}
-
-writeString(0,"RIFF");
-view.setUint32(4,36+dataSize,true);
-writeString(8,"WAVE");
-writeString(12,"fmt ");
-view.setUint32(16,16,true);
-view.setUint16(20,1,true);
-view.setUint16(22,channels,true);
-view.setUint32(24,sampleRate,true);
-view.setUint32(28,sampleRate*blockAlign,true);
-view.setUint16(32,blockAlign,true);
-view.setUint16(34,16,true);
-writeString(36,"data");
-view.setUint32(40,dataSize,true);
-
-let offset=44;
-
-for(let i=startSample;i<endSample;i++){
-for(let channel=0;channel<channels;channel++){
-let sample=buffer.getChannelData(channel)[i];
-sample=Math.max(-1,Math.min(1,sample));
-const value=sample<0?sample*32768:sample*32767;
-view.setInt16(offset,value,true);
-offset+=2;
-}
-}
-
-return new Uint8Array(arrayBuffer);
-}
-
-async function convertHorn(horn,index,total){
-const audioContext=new(window.AudioContext||window.webkitAudioContext)();
-
-try{
-const fileData=await horn.file.arrayBuffer();
-const audioBuffer=await audioContext.decodeAudioData(fileData);
-const duration=audioBuffer.duration;
-const segmentCount=Math.ceil(duration/INTERVAL);
-
-if(segmentCount<1)throw new Error(`${horn.name} の音声を読み込めなかったよ`);
-
-const segments=[];
-
-for(let i=0;i<segmentCount;i++){
-const start=i*INTERVAL;
-const end=Math.min((i+1)*INTERVAL,duration);
-const wav=audioBufferToWav(audioBuffer,start,end);
-const inputName=`input_${index}_${i}.wav`;
-const outputName=`output_${index}_${i}.ogg`;
-
-ffmpeg.FS("writeFile",inputName,wav);
-
-await ffmpeg.run(
-"-i",inputName,
-"-c:a","libvorbis",
-"-q:a","5",
-outputName
-);
-
-const output=ffmpeg.FS("readFile",outputName);
-
-segments.push({
-id:`${horn.id}_${i+1}`,
-fileName:`${horn.id}_${i+1}.ogg`,
-data:output
-});
-
-ffmpeg.FS("unlink",inputName);
-ffmpeg.FS("unlink",outputName);
-
-const progress=((index+(i+1)/segmentCount)/total)*80;
-setProgress(progress);
-setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
-}
-
-return segments;
-
-}finally{
-await audioContext.close();
-}
-}
-
 function createManifest(name,modules,dependencies=[]){
 return{
 format_version:2,
@@ -295,6 +186,82 @@ dependencies
 };
 }
 
+async function convertHorn(horn,index,total){
+const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+if(!AudioContextClass)throw new Error("このブラウザは音声読み込みに対応していないよ");
+
+const audioContext=new AudioContextClass();
+
+try{
+const fileData=await horn.file.arrayBuffer();
+let audioBuffer;
+
+try{
+audioBuffer=await audioContext.decodeAudioData(fileData);
+}catch(error){
+throw new Error(`${horn.name} の音源を読み込めなかったよ。Safariが対応している音声形式か確認してね。`);
+}
+
+const duration=audioBuffer.duration;
+const sampleRate=audioBuffer.sampleRate;
+const channels=audioBuffer.numberOfChannels;
+const segmentCount=Math.ceil(duration/INTERVAL);
+
+if(segmentCount<1)throw new Error(`${horn.name} の音声が空だよ`);
+
+const segments=[];
+
+for(let i=0;i<segmentCount;i++){
+const startSample=Math.floor(i*INTERVAL*sampleRate);
+const endSample=Math.min(
+audioBuffer.length,
+Math.round(Math.min((i+1)*INTERVAL,duration)*sampleRate)
+);
+
+if(endSample<=startSample)continue;
+
+const channelData=[];
+
+for(let channel=0;channel<channels;channel++){
+channelData.push(
+audioBuffer.getChannelData(channel).slice(startSample,endSample)
+);
+}
+
+const encoder=new OggVorbisEncoder(
+sampleRate,
+channels,
+0.5
+);
+
+try{
+encoder.encode(channelData);
+const blob=encoder.finish("audio/ogg");
+const data=new Uint8Array(await blob.arrayBuffer());
+
+segments.push({
+id:`${horn.id}_${i+1}`,
+fileName:`${horn.id}_${i+1}.ogg`,
+data
+});
+}catch(error){
+encoder.cancel();
+throw new Error(`${horn.name} のOGG変換に失敗したよ: ${error.message||error}`);
+}
+
+const progress=((index+(i+1)/segmentCount)/total)*80;
+setProgress(progress);
+setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
+await new Promise(resolve=>setTimeout(resolve,0));
+}
+
+return segments;
+
+}finally{
+await audioContext.close();
+}
+}
+
 async function generate(){
 const button=$("generateBtn");
 if(button.disabled)return;
@@ -305,7 +272,10 @@ $("addHorn").disabled=true;
 try{
 const horns=readHorns();
 validate(horns);
-await loadFFmpeg();
+
+if(typeof OggVorbisEncoder==="undefined"){
+throw new Error("OGG変換エンジンを読み込めなかったよ。ページを再読み込みしてね。");
+}
 
 const zip=new JSZip();
 const rpUuid=crypto.randomUUID();
