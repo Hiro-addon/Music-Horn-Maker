@@ -23,10 +23,8 @@ header p{color:#777;margin-top:7px}
 .field label.field-label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#555}
 input[type="text"],input[type="number"]{width:100%;padding:12px;border:1px solid #d9dce2;border-radius:8px;font-size:15px;background:white;color:#222}
 input:focus{outline:none;border-color:#4285f4}
-.drop{display:flex;align-items:center;justify-content:center;min-height:100px;border:2px dashed #cbd0d8;border-radius:10px;background:#fafbfc;cursor:pointer;text-align:center;padding:15px}
-.drop:active{background:#f0f4ff}
-.drop input{display:none}
-.drop-text{color:#555;font-size:14px}
+.file-select{width:100%;min-height:100px;border:2px dashed #cbd0d8;border-radius:10px;background:#fafbfc;color:#555;display:flex;align-items:center;justify-content:center;text-align:center;padding:15px;font-size:14px;font-weight:400}
+.file-select:active{background:#f0f4ff}
 .file-info{margin-top:8px;font-size:13px;color:#777;overflow-wrap:anywhere}
 button{border:none;border-radius:9px;padding:13px 17px;font-size:14px;font-weight:600;cursor:pointer}
 button:disabled{opacity:.5;cursor:not-allowed}
@@ -38,6 +36,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .progress-bar{width:0%;height:100%;background:#3478e5;transition:width .2s}
 .note{font-size:12px;line-height:1.7;color:#777;margin-top:12px}
 .fixed-info{padding:12px;background:#f2f6ff;border-radius:9px;color:#315fa8;font-size:13px;margin-bottom:16px}
+.hidden-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 </style>
 </head>
 <body>
@@ -108,10 +107,8 @@ card.innerHTML=`
 
 <div class="field">
 <label class="field-label">音源ファイル</label>
-<label class="drop">
-<span class="drop-text">音源ファイルを選択<br>タップしてファイルを選ぶ</span>
-<input type="file" class="horn-audio" accept="audio/*">
-</label>
+<button type="button" class="file-select">音源ファイルを選択<br>タップしてファイルを選ぶ</button>
+<input type="file" class="horn-audio hidden-file" accept="audio/*">
 <div class="file-info">ファイル未選択</div>
 </div>
 
@@ -121,16 +118,22 @@ card.innerHTML=`
 </div>
 `;
 
+const audioInput=card.querySelector(".horn-audio");
+const fileButton=card.querySelector(".file-select");
+
+fileButton.addEventListener("click",()=>{
+audioInput.click();
+});
+
+audioInput.addEventListener("change",()=>{
+const file=audioInput.files&&audioInput.files[0];
+card.querySelector(".file-info").textContent=file?file.name:"ファイル未選択";
+fileButton.textContent=file?"音源を変更する":"音源ファイルを選択\nタップしてファイルを選ぶ";
+});
+
 card.querySelector(".remove").addEventListener("click",()=>{
 card.remove();
 updateHornNumbers();
-});
-
-const audioInput=card.querySelector(".horn-audio");
-
-audioInput.addEventListener("change",()=>{
-const file=audioInput.files[0];
-card.querySelector(".file-info").textContent=file?file.name:"ファイル未選択";
 });
 
 $("hornList").appendChild(card);
@@ -148,7 +151,6 @@ volume:Number(card.querySelector(".horn-volume").value)
 
 function validate(horns){
 if(horns.length===0)throw new Error("ホーンを1つ以上追加してね");
-
 const ids=new Set();
 
 for(let i=0;i<horns.length;i++){
@@ -157,7 +159,6 @@ const horn=horns[i];
 if(!horn.id)throw new Error(`ホーン ${i+1} のIDを入力してね`);
 if(!/^[a-zA-Z0-9_.-]+$/.test(horn.id))throw new Error(`ホーン ${i+1} のIDに使用できない文字があるよ`);
 if(ids.has(horn.id))throw new Error(`ホーンID「${horn.id}」が重複しているよ`);
-
 ids.add(horn.id);
 
 if(!horn.name)throw new Error(`ホーン ${i+1} の名前を入力してね`);
@@ -168,16 +169,12 @@ if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(
 
 async function loadFFmpeg(){
 if(ffmpeg)return;
-
 setStatus("変換エンジンを読み込み中...");
-
 const {createFFmpeg}=FFmpeg;
-
 ffmpeg=createFFmpeg({
 log:false,
 corePath:"https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
 });
-
 await ffmpeg.load();
 }
 
@@ -248,7 +245,6 @@ for(let i=0;i<segmentCount;i++){
 const start=i*INTERVAL;
 const end=Math.min((i+1)*INTERVAL,duration);
 const wav=audioBufferToWav(audioBuffer,start,end);
-
 const inputName=`input_${index}_${i}.wav`;
 const outputName=`output_${index}_${i}.ogg`;
 
@@ -301,7 +297,6 @@ dependencies
 
 async function generate(){
 const button=$("generateBtn");
-
 if(button.disabled)return;
 
 button.disabled=true;
@@ -310,7 +305,6 @@ $("addHorn").disabled=true;
 try{
 const horns=readHorns();
 validate(horns);
-
 await loadFFmpeg();
 
 const zip=new JSZip();
@@ -320,7 +314,6 @@ const soundFiles=[];
 
 for(let i=0;i<horns.length;i++){
 const horn=horns[i];
-
 const segments=await convertHorn(horn,i,horns.length);
 
 soundDefinitions[horn.id]={
@@ -428,10 +421,8 @@ compressionOptions:{level:6}
 
 const url=URL.createObjectURL(output);
 const link=document.createElement("a");
-
 link.href=url;
 link.download="Music_Horn_Maker.mcaddon";
-
 document.body.appendChild(link);
 link.click();
 link.remove();
@@ -452,7 +443,6 @@ $("addHorn").disabled=false;
 
 $("addHorn").addEventListener("click",createHorn);
 $("generateBtn").addEventListener("click",generate);
-
 createHorn();
 </script>
 </body>
