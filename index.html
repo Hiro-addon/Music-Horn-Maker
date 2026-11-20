@@ -6,11 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Music Horn Maker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script>
-var OggVorbisEncoderConfig={
-memoryInitializerPrefixURL:"https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/"
-};
-</script>
 <script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.min.js"></script>
 <style>
 *{box-sizing:border-box}
@@ -228,11 +223,7 @@ audioBuffer.getChannelData(channel).slice(startSample,endSample)
 );
 }
 
-const encoder=new OggVorbisEncoder(
-sampleRate,
-channels,
-0.5
-);
+const encoder=new OggVorbisEncoder(sampleRate,channels,0.5);
 
 try{
 encoder.encode(channelData);
@@ -240,7 +231,7 @@ const blob=encoder.finish("audio/ogg");
 const data=new Uint8Array(await blob.arrayBuffer());
 
 segments.push({
-id:`${horn.id}_${i+1}`,
+hornId:horn.id,
 fileName:`${horn.id}_${i+1}.ogg`,
 data
 });
@@ -287,10 +278,9 @@ const horn=horns[i];
 const segments=await convertHorn(horn,i,horns.length);
 
 soundDefinitions[horn.id]={
-category:"record",
+category:"neutral",
 sounds:segments.map(segment=>({
-name:`sounds/music_horn/${segment.fileName.replace(/\.ogg$/,"")}`,
-stream:true,
+name:`sounds/${horn.id}/${segment.fileName.replace(/\.ogg$/,"")}`,
 volume:horn.volume
 }))
 };
@@ -314,12 +304,15 @@ version:[1,0,0]
 ));
 
 rp.file("sounds/sound_definitions.json",JSON.stringify({
-format_version:"1.14.0",
+format_version:"1.20.20",
 sound_definitions:soundDefinitions
 },null,2));
 
 for(const segment of soundFiles){
-rp.file(`sounds/music_horn/${segment.fileName}`,segment.data);
+rp.file(
+`sounds/${segment.hornId}/${segment.fileName}`,
+segment.data
+);
 }
 
 setStatus("ビヘイビアーパックを作成中...");
