@@ -1,0 +1,459 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Horn Maker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#f5f6f8;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.container{max-width:760px;margin:0 auto}
+header{margin-bottom:25px}
+header h1{margin:0;font-size:27px}
+header p{color:#777;margin-top:7px}
+.section{background:white;padding:20px;border-radius:14px;margin-bottom:18px;box-shadow:0 2px 8px #00000008}
+.section h2{margin:0 0 18px;font-size:19px}
+.horn-card{border:1px solid #e2e4e8;border-radius:12px;padding:16px;margin-bottom:14px;background:#fff}
+.horn-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.horn-title{font-size:17px;font-weight:700}
+.field{margin-bottom:15px}
+.field label.field-label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#555}
+input[type="text"],input[type="number"]{width:100%;padding:12px;border:1px solid #d9dce2;border-radius:8px;font-size:15px;background:white;color:#222}
+input:focus{outline:none;border-color:#4285f4}
+.drop{display:flex;align-items:center;justify-content:center;min-height:100px;border:2px dashed #cbd0d8;border-radius:10px;background:#fafbfc;cursor:pointer;text-align:center;padding:15px}
+.drop:active{background:#f0f4ff}
+.drop input{display:none}
+.drop-text{color:#555;font-size:14px}
+.file-info{margin-top:8px;font-size:13px;color:#777;overflow-wrap:anywhere}
+button{border:none;border-radius:9px;padding:13px 17px;font-size:14px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.add{width:100%;background:#edf3ff;color:#2463c7;margin-top:5px}
+.remove{background:#fff0f0;color:#d33;padding:8px 13px}
+.generate{width:100%;background:#2463d4;color:white;font-size:16px;padding:16px}
+.status{margin-top:15px;color:#555;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.progress{height:7px;background:#e8eaf0;border-radius:10px;margin-top:12px;overflow:hidden}
+.progress-bar{width:0%;height:100%;background:#3478e5;transition:width .2s}
+.note{font-size:12px;line-height:1.7;color:#777;margin-top:12px}
+.fixed-info{padding:12px;background:#f2f6ff;border-radius:9px;color:#315fa8;font-size:13px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Music Horn Maker</h1>
+<p>カスタムミュージックホーンを作成</p>
+</header>
+
+<div class="section">
+<h2>ホーン設定</h2>
+<div class="fixed-info">音源の分割間隔：0.2秒（固定）<br>最後の余り部分もそのまま保存されるよ。</div>
+<div id="hornList"></div>
+<button class="add" id="addHorn" type="button">＋ ホーンを追加</button>
+</div>
+
+<div class="section">
+<h2>アドオン生成</h2>
+<button class="generate" id="generateBtn" type="button">mcaddonを生成</button>
+<div class="progress"><div class="progress-bar" id="bar"></div></div>
+<div class="status" id="status">準備完了</div>
+<div class="note">音源ファイルは自動でOGG形式に変換され、0.2秒間隔で分割されるよ。最後の余り部分は切り捨てず、実際の長さで保存するよ。</div>
+</div>
+</div>
+
+<script>
+let ffmpeg=null;
+const INTERVAL=0.2;
+const $=id=>document.getElementById(id);
+
+function setStatus(message){
+$("status").textContent=message;
+}
+
+function setProgress(value){
+$("bar").style.width=Math.max(0,Math.min(100,value))+"%";
+}
+
+function updateHornNumbers(){
+document.querySelectorAll(".horn-card").forEach((card,index)=>{
+const number=index+1;
+card.dataset.horn=String(number);
+card.querySelector(".horn-title").textContent=`ホーン ${number}`;
+});
+}
+
+function createHorn(){
+const number=document.querySelectorAll(".horn-card").length+1;
+const card=document.createElement("section");
+card.className="horn-card";
+card.dataset.horn=String(number);
+
+card.innerHTML=`
+<div class="horn-head">
+<div class="horn-title">ホーン ${number}</div>
+<button type="button" class="remove">削除</button>
+</div>
+
+<div class="field">
+<label class="field-label">ホーンID</label>
+<input type="text" class="horn-id" value="custom_horn_${number}" placeholder="custom_horn_1">
+</div>
+
+<div class="field">
+<label class="field-label">ホーン名</label>
+<input type="text" class="horn-name" value="カスタムホーン ${number}" placeholder="ホーン名">
+</div>
+
+<div class="field">
+<label class="field-label">音源ファイル</label>
+<label class="drop">
+<span class="drop-text">音源ファイルを選択<br>タップしてファイルを選ぶ</span>
+<input type="file" class="horn-audio" accept="audio/*">
+</label>
+<div class="file-info">ファイル未選択</div>
+</div>
+
+<div class="field">
+<label class="field-label">音量</label>
+<input type="number" class="horn-volume" value="1" min="0" max="16" step="0.1">
+</div>
+`;
+
+card.querySelector(".remove").addEventListener("click",()=>{
+card.remove();
+updateHornNumbers();
+});
+
+const audioInput=card.querySelector(".horn-audio");
+
+audioInput.addEventListener("change",()=>{
+const file=audioInput.files[0];
+card.querySelector(".file-info").textContent=file?file.name:"ファイル未選択";
+});
+
+$("hornList").appendChild(card);
+updateHornNumbers();
+}
+
+function readHorns(){
+return [...document.querySelectorAll(".horn-card")].map(card=>({
+id:card.querySelector(".horn-id").value.trim(),
+name:card.querySelector(".horn-name").value.trim(),
+file:card.querySelector(".horn-audio").files[0],
+volume:Number(card.querySelector(".horn-volume").value)
+}));
+}
+
+function validate(horns){
+if(horns.length===0)throw new Error("ホーンを1つ以上追加してね");
+
+const ids=new Set();
+
+for(let i=0;i<horns.length;i++){
+const horn=horns[i];
+
+if(!horn.id)throw new Error(`ホーン ${i+1} のIDを入力してね`);
+if(!/^[a-zA-Z0-9_.-]+$/.test(horn.id))throw new Error(`ホーン ${i+1} のIDに使用できない文字があるよ`);
+if(ids.has(horn.id))throw new Error(`ホーンID「${horn.id}」が重複しているよ`);
+
+ids.add(horn.id);
+
+if(!horn.name)throw new Error(`ホーン ${i+1} の名前を入力してね`);
+if(!horn.file)throw new Error(`ホーン ${i+1} の音源ファイルを選択してね`);
+if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(`ホーン ${i+1} の音量は0〜16で入力してね`);
+}
+}
+
+async function loadFFmpeg(){
+if(ffmpeg)return;
+
+setStatus("変換エンジンを読み込み中...");
+
+const {createFFmpeg}=FFmpeg;
+
+ffmpeg=createFFmpeg({
+log:false,
+corePath:"https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+});
+
+await ffmpeg.load();
+}
+
+function audioBufferToWav(buffer,start,end){
+const sampleRate=buffer.sampleRate;
+const channels=buffer.numberOfChannels;
+const startSample=Math.floor(start*sampleRate);
+const endSample=Math.min(buffer.length,Math.round(end*sampleRate));
+const length=endSample-startSample;
+
+if(length<=0)throw new Error("音声の分割に失敗したよ");
+
+const bytesPerSample=2;
+const blockAlign=channels*bytesPerSample;
+const dataSize=length*blockAlign;
+const arrayBuffer=new ArrayBuffer(44+dataSize);
+const view=new DataView(arrayBuffer);
+
+function writeString(offset,string){
+for(let i=0;i<string.length;i++){
+view.setUint8(offset+i,string.charCodeAt(i));
+}
+}
+
+writeString(0,"RIFF");
+view.setUint32(4,36+dataSize,true);
+writeString(8,"WAVE");
+writeString(12,"fmt ");
+view.setUint32(16,16,true);
+view.setUint16(20,1,true);
+view.setUint16(22,channels,true);
+view.setUint32(24,sampleRate,true);
+view.setUint32(28,sampleRate*blockAlign,true);
+view.setUint16(32,blockAlign,true);
+view.setUint16(34,16,true);
+writeString(36,"data");
+view.setUint32(40,dataSize,true);
+
+let offset=44;
+
+for(let i=startSample;i<endSample;i++){
+for(let channel=0;channel<channels;channel++){
+let sample=buffer.getChannelData(channel)[i];
+sample=Math.max(-1,Math.min(1,sample));
+const value=sample<0?sample*32768:sample*32767;
+view.setInt16(offset,value,true);
+offset+=2;
+}
+}
+
+return new Uint8Array(arrayBuffer);
+}
+
+async function convertHorn(horn,index,total){
+const audioContext=new(window.AudioContext||window.webkitAudioContext)();
+
+try{
+const fileData=await horn.file.arrayBuffer();
+const audioBuffer=await audioContext.decodeAudioData(fileData);
+const duration=audioBuffer.duration;
+const segmentCount=Math.ceil(duration/INTERVAL);
+
+if(segmentCount<1)throw new Error(`${horn.name} の音声を読み込めなかったよ`);
+
+const segments=[];
+
+for(let i=0;i<segmentCount;i++){
+const start=i*INTERVAL;
+const end=Math.min((i+1)*INTERVAL,duration);
+const wav=audioBufferToWav(audioBuffer,start,end);
+
+const inputName=`input_${index}_${i}.wav`;
+const outputName=`output_${index}_${i}.ogg`;
+
+ffmpeg.FS("writeFile",inputName,wav);
+
+await ffmpeg.run(
+"-i",inputName,
+"-c:a","libvorbis",
+"-q:a","5",
+outputName
+);
+
+const output=ffmpeg.FS("readFile",outputName);
+
+segments.push({
+id:`${horn.id}_${i+1}`,
+fileName:`${horn.id}_${i+1}.ogg`,
+data:output
+});
+
+ffmpeg.FS("unlink",inputName);
+ffmpeg.FS("unlink",outputName);
+
+const progress=((index+(i+1)/segmentCount)/total)*80;
+setProgress(progress);
+setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
+}
+
+return segments;
+
+}finally{
+await audioContext.close();
+}
+}
+
+function createManifest(name,modules,dependencies=[]){
+return{
+format_version:2,
+header:{
+name,
+description:"Music Horn Maker generated pack",
+uuid:crypto.randomUUID(),
+version:[1,0,0],
+min_engine_version:[1,26,0]
+},
+modules,
+dependencies
+};
+}
+
+async function generate(){
+const button=$("generateBtn");
+
+if(button.disabled)return;
+
+button.disabled=true;
+$("addHorn").disabled=true;
+
+try{
+const horns=readHorns();
+validate(horns);
+
+await loadFFmpeg();
+
+const zip=new JSZip();
+const rpUuid=crypto.randomUUID();
+const soundDefinitions={};
+const soundFiles=[];
+
+for(let i=0;i<horns.length;i++){
+const horn=horns[i];
+
+const segments=await convertHorn(horn,i,horns.length);
+
+soundDefinitions[horn.id]={
+category:"record",
+sounds:segments.map(segment=>({
+name:`sounds/music_horn/${segment.fileName.replace(/\.ogg$/,"")}`,
+stream:true,
+volume:horn.volume
+}))
+};
+
+for(const segment of segments){
+soundFiles.push(segment);
+}
+}
+
+setStatus("リソースパックを作成中...");
+setProgress(85);
+
+const rp=zip.folder("Music Horn Maker RP");
+
+rp.file("manifest.json",JSON.stringify(
+createManifest("Music Horn Maker RP",[{
+type:"resources",
+uuid:rpUuid,
+version:[1,0,0]
+}]),null,2
+));
+
+rp.file("sounds/sound_definitions.json",JSON.stringify({
+format_version:"1.14.0",
+sound_definitions:soundDefinitions
+},null,2));
+
+for(const segment of soundFiles){
+rp.file(`sounds/music_horn/${segment.fileName}`,segment.data);
+}
+
+setStatus("ビヘイビアーパックを作成中...");
+setProgress(90);
+
+const bp=zip.folder("Music Horn Maker BP");
+
+bp.file("manifest.json",JSON.stringify(
+createManifest(
+"Music Horn Maker BP",
+[{
+type:"data",
+uuid:crypto.randomUUID(),
+version:[1,0,0]
+},{
+type:"script",
+language:"javascript",
+entry:"scripts/main.js",
+uuid:crypto.randomUUID(),
+version:[1,0,0]
+}],
+[{
+uuid:rpUuid,
+version:[1,0,0]
+},{
+module_name:"@minecraft/server",
+version:"2.7.0"
+}]
+),null,2));
+
+const registrationData=horns.map(horn=>({
+id:horn.id,
+name:horn.name,
+interval:INTERVAL,
+volume:horn.volume
+}));
+
+const mainJs=`
+import { system } from "@minecraft/server";
+
+const HORNS = ${JSON.stringify(registrationData,null,4)};
+const EVENT_ID = "hiro:music_horn_register";
+
+let attempts = 0;
+
+const runId = system.runInterval(() => {
+    for (const horn of HORNS) {
+        system.sendScriptEvent(EVENT_ID, JSON.stringify(horn));
+    }
+
+    attempts++;
+
+    if (attempts >= 5) {
+        system.clearRun(runId);
+    }
+}, 20);
+`;
+
+bp.file("scripts/main.js",mainJs);
+
+setStatus("mcaddonを生成中...");
+setProgress(95);
+
+const output=await zip.generateAsync({
+type:"blob",
+compression:"DEFLATE",
+compressionOptions:{level:6}
+});
+
+const url=URL.createObjectURL(output);
+const link=document.createElement("a");
+
+link.href=url;
+link.download="Music_Horn_Maker.mcaddon";
+
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+setTimeout(()=>URL.revokeObjectURL(url),10000);
+
+setProgress(100);
+setStatus("生成完了！mcaddonを保存したよ。");
+
+}catch(error){
+console.error(error);
+setStatus("エラー: "+(error.message||error));
+}finally{
+button.disabled=false;
+$("addHorn").disabled=false;
+}
+}
+
+$("addHorn").addEventListener("click",createHorn);
+$("generateBtn").addEventListener("click",generate);
+
+createHorn();
+</script>
+</body>
+</html>
