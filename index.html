@@ -24,7 +24,6 @@ header p{color:#777;margin-top:7px}
 input[type="text"],input[type="number"]{width:100%;padding:12px;border:1px solid #d9dce2;border-radius:8px;font-size:15px;background:white;color:#222}
 input:focus{outline:none;border-color:#4285f4}
 .file-select{width:100%;min-height:100px;border:2px dashed #cbd0d8;border-radius:10px;background:#fafbfc;color:#555;display:flex;align-items:center;justify-content:center;text-align:center;padding:15px;font-size:14px;font-weight:400}
-.file-select:active{background:#f0f4ff}
 .file-info{margin-top:8px;font-size:13px;color:#777;overflow-wrap:anywhere}
 button{border:none;border-radius:9px;padding:13px 17px;font-size:14px;font-weight:600;cursor:pointer}
 button:disabled{opacity:.5;cursor:not-allowed}
@@ -58,7 +57,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <button class="generate" id="generateBtn" type="button">mcaddonを生成</button>
 <div class="progress"><div class="progress-bar" id="bar"></div></div>
 <div class="status" id="status">準備完了</div>
-<div class="note">音源はOGG Vorbis形式に変換され、0.2秒間隔で分割されるよ。最後の余り部分も保存されるよ。</div>
+<div class="note">音源はOGG Vorbis形式に変換され、0.2秒間隔で分割されるよ。</div>
 </div>
 </div>
 
@@ -74,11 +73,17 @@ function setProgress(value){
 $("bar").style.width=Math.max(0,Math.min(100,value))+"%";
 }
 
+function uuid(){
+return crypto.randomUUID();
+}
+
+function versionArray(value){
+return value.split(".").map(v=>parseInt(v,10)||0);
+}
+
 function updateHornNumbers(){
 document.querySelectorAll(".horn-card").forEach((card,index)=>{
-const number=index+1;
-card.dataset.horn=String(number);
-card.querySelector(".horn-title").textContent=`ホーン ${number}`;
+card.querySelector(".horn-title").textContent=`ホーン ${index+1}`;
 });
 }
 
@@ -86,31 +91,26 @@ function createHorn(){
 const number=document.querySelectorAll(".horn-card").length+1;
 const card=document.createElement("section");
 card.className="horn-card";
-card.dataset.horn=String(number);
 
 card.innerHTML=`
 <div class="horn-head">
 <div class="horn-title">ホーン ${number}</div>
 <button type="button" class="remove">削除</button>
 </div>
-
 <div class="field">
 <label class="field-label">ホーンID</label>
 <input type="text" class="horn-id" value="custom_horn_${number}" placeholder="custom_horn_1">
 </div>
-
 <div class="field">
 <label class="field-label">ホーン名</label>
 <input type="text" class="horn-name" value="カスタムホーン ${number}" placeholder="ホーン名">
 </div>
-
 <div class="field">
 <label class="field-label">音源ファイル</label>
 <button type="button" class="file-select">音源ファイルを選択<br>タップしてファイルを選ぶ</button>
 <input type="file" class="horn-audio hidden-file">
 <div class="file-info">ファイル未選択</div>
 </div>
-
 <div class="field">
 <label class="field-label">音量</label>
 <input type="number" class="horn-volume" value="1" min="0" max="16" step="0.1">
@@ -120,14 +120,12 @@ card.innerHTML=`
 const audioInput=card.querySelector(".horn-audio");
 const fileButton=card.querySelector(".file-select");
 
-fileButton.addEventListener("click",()=>{
-audioInput.click();
-});
+fileButton.addEventListener("click",()=>audioInput.click());
 
 audioInput.addEventListener("change",()=>{
 const file=audioInput.files&&audioInput.files[0];
 card.querySelector(".file-info").textContent=file?file.name:"ファイル未選択";
-fileButton.textContent=file?"音源を変更する":"音源ファイルを選択\nタップしてファイルを選ぶ";
+fileButton.textContent=file?"音源を変更する":"音源ファイルを選択";
 });
 
 card.querySelector(".remove").addEventListener("click",()=>{
@@ -167,19 +165,82 @@ if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(
 }
 }
 
-function createManifest(name,modules,dependencies=[]){
-return{
+function createBehaviorManifest(name,description,version,engine,bpUuid,rpUuid){
+const bpModuleUuid=uuid();
+
+const manifest={
 format_version:2,
 header:{
-name,
-description:"Music Horn Maker generated pack",
-uuid:crypto.randomUUID(),
-version:[1,0,0],
-min_engine_version:[1,26,0]
+name:name,
+description:description,
+uuid:bpUuid,
+version:versionArray(version),
+min_engine_version:versionArray(engine)
 },
-modules,
-dependencies
+modules:[
+{
+description:description,
+type:"data",
+uuid:bpModuleUuid,
+version:versionArray(version)
+},
+{
+description:"Script",
+type:"script",
+language:"javascript",
+uuid:uuid(),
+version:versionArray(version),
+entry:"scripts/main.js"
+}
+],
+dependencies:[
+{
+module_name:"@minecraft/server",
+version:"2.7.0"
+}
+]
 };
+
+if(rpUuid){
+manifest.dependencies.unshift({
+uuid:rpUuid,
+version:versionArray(version)
+});
+}
+
+return manifest;
+}
+
+function createResourceManifest(name,description,version,engine,rpUuid,bpUuid){
+const manifest={
+format_version:2,
+header:{
+name:name,
+description:description,
+uuid:rpUuid,
+version:versionArray(version),
+min_engine_version:versionArray(engine)
+},
+modules:[
+{
+description:"Resources",
+type:"resources",
+uuid:uuid(),
+version:versionArray(version)
+}
+]
+};
+
+if(bpUuid){
+manifest.dependencies=[
+{
+uuid:bpUuid,
+version:versionArray(version)
+}
+];
+}
+
+return manifest;
 }
 
 async function convertHorn(horn,index,total){
@@ -223,9 +284,7 @@ if(endSample<=startSample)continue;
 const channelData=[];
 
 for(let channel=0;channel<channels;channel++){
-channelData.push(
-audioBuffer.getChannelData(channel).slice(startSample,endSample)
-);
+channelData.push(audioBuffer.getChannelData(channel).slice(startSample,endSample));
 }
 
 let encoder;
@@ -244,7 +303,6 @@ hornId:horn.id,
 fileName:`${horn.id}_${i+1}.ogg`,
 data
 });
-
 }catch(error){
 if(encoder){
 try{encoder.cancel()}catch(e){}
@@ -255,12 +313,10 @@ throw new Error(`${horn.name} のOGG変換に失敗したよ: ${error.message||e
 const progress=((index+(i+1)/segmentCount)/total)*80;
 setProgress(progress);
 setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
-
 await new Promise(resolve=>setTimeout(resolve,0));
 }
 
 return segments;
-
 }finally{
 await audioContext.close();
 }
@@ -282,7 +338,19 @@ throw new Error("OGG変換エンジンを読み込めなかったよ。ページ
 }
 
 const zip=new JSZip();
-const rpUuid=crypto.randomUUID();
+
+const bpUuid=uuid();
+const rpUuid=uuid();
+
+const packName="Music Horn Maker";
+const description="Music Horn Makerで生成されたカスタムミュージックホーン";
+
+const version="1.0.0";
+const engine="1.26.0";
+
+const rp=zip.folder("Music Horn Maker RP");
+const bp=zip.folder("Music Horn Maker BP");
+
 const soundDefinitions={};
 const soundFiles=[];
 
@@ -304,15 +372,16 @@ soundFiles.push(...segments);
 setStatus("リソースパックを作成中...");
 setProgress(85);
 
-const rp=zip.folder("Music Horn Maker RP");
+const rpManifest=createResourceManifest(
+packName+" RP",
+description,
+version,
+engine,
+rpUuid,
+bpUuid
+);
 
-rp.file("manifest.json",JSON.stringify(
-createManifest("Music Horn Maker RP",[{
-type:"resources",
-uuid:rpUuid,
-version:[1,0,0]
-}]),null,2
-));
+rp.file("manifest.json",JSON.stringify(rpManifest,null,2));
 
 rp.file("sounds/sound_definitions.json",JSON.stringify({
 format_version:"1.20.20",
@@ -320,39 +389,22 @@ sound_definitions:soundDefinitions
 },null,2));
 
 for(const segment of soundFiles){
-rp.file(
-`sounds/${segment.hornId}/${segment.fileName}`,
-segment.data
-);
+rp.file(`sounds/${segment.hornId}/${segment.fileName}`,segment.data);
 }
 
 setStatus("ビヘイビアーパックを作成中...");
 setProgress(90);
 
-const bp=zip.folder("Music Horn Maker BP");
+const bpManifest=createBehaviorManifest(
+packName+" BP",
+description,
+version,
+engine,
+bpUuid,
+rpUuid
+);
 
-bp.file("manifest.json",JSON.stringify(
-createManifest(
-"Music Horn Maker BP",
-[{
-type:"data",
-uuid:crypto.randomUUID(),
-version:[1,0,0]
-},{
-type:"script",
-language:"javascript",
-entry:"scripts/main.js",
-uuid:crypto.randomUUID(),
-version:[1,0,0]
-}],
-[{
-uuid:rpUuid,
-version:[1,0,0]
-},{
-module_name:"@minecraft/server",
-version:"2.7.0"
-}]
-),null,2));
+bp.file("manifest.json",JSON.stringify(bpManifest,null,2));
 
 const registrationData=horns.map(horn=>({
 id:horn.id,
