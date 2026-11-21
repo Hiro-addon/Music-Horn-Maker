@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -234,7 +235,6 @@ button:disabled {
 
 <div class="panel">
     <h2>ホーン設定</h2>
-
     <div id="hornList"></div>
 
     <button class="add-button" id="addHornButton">
@@ -267,7 +267,7 @@ button:disabled {
 
     <p class="note">
         音声は0.2秒ごとに分割されます。
-        最後の区間だけ0.2秒に満たない場合、足りない部分を無音で補完します。
+        最後の区間だけ0.2秒に満たない場合は、不足部分を無音で補完します。
     </p>
 </div>
 
@@ -315,20 +315,20 @@ function showStatus(message, type = "info") {
 
 function setProgress(value) {
     progressElement.style.display = "block";
-    progressBar.style.width = Math.max(0, Math.min(100, value)) + "%";
+    progressBar.style.width =
+        Math.max(0, Math.min(100, value)) + "%";
 }
 
 function createHorn() {
     const number = nextHornNumber++;
 
-    const horn = {
+    horns.push({
         id: `custom_horn_${number}`,
         name: `カスタムホーン ${number}`,
         file: null,
         volume: 1
-    };
+    });
 
-    horns.push(horn);
     renderHorns();
 }
 
@@ -389,7 +389,8 @@ function renderHorns() {
 
         nameInput.addEventListener("input", () => {
             horn.name = nameInput.value;
-            title.textContent = horn.name || `ホーン ${index + 1}`;
+            title.textContent =
+                horn.name || `ホーン ${index + 1}`;
         });
 
         nameField.appendChild(nameLabel);
@@ -406,9 +407,10 @@ function renderHorns() {
         fileInput.accept = "audio/*,.wav,.mp3,.ogg,.m4a";
 
         fileInput.addEventListener("change", () => {
-            horn.file = fileInput.files && fileInput.files[0]
-                ? fileInput.files[0]
-                : null;
+            horn.file =
+                fileInput.files && fileInput.files[0]
+                    ? fileInput.files[0]
+                    : null;
         });
 
         fileField.appendChild(fileLabel);
@@ -467,7 +469,8 @@ function validateHorns() {
 
         if (!/^[a-z0-9_]+$/.test(horn.id)) {
             throw new Error(
-                `ホーン ${i + 1} のIDが不正です。\n半角英小文字・数字・アンダーバーのみ使用できます。`
+                `ホーン ${i + 1} のIDが不正です。\n` +
+                "半角英小文字・数字・アンダーバーのみ使用できます。"
             );
         }
 
@@ -509,11 +512,6 @@ function validateHorns() {
     }
 }
 
-/*
- * OGGページのGranule Positionを修正する。
- * ページ構造を解析し、最終EOSページの再生位置を変更する。
- * ページCRCも再計算する。
- */
 function fixOggGranulePosition(input, targetSamples) {
     const data = new Uint8Array(input);
     const view = new DataView(
@@ -549,6 +547,7 @@ function fixOggGranulePosition(input, targetSamples) {
 
     let offset = 0;
     let finalPage = -1;
+    let previousGranule = 0n;
 
     while (offset < data.length) {
         if (offset + 27 > data.length) {
@@ -583,69 +582,58 @@ function fixOggGranulePosition(input, targetSamples) {
             throw new Error("OGGページの長さが不正です。");
         }
 
-        if (data[offset + 5] & 0x04) {
+        const granule = view.getBigInt64(offset + 6, true);
+        const isEOS = (data[offset + 5] & 0x04) !== 0;
+
+        if (isEOS) {
+            if (offset + pageLength !== data.length) {
+                throw new Error("OGGの最終ページが不正です。");
+            }
+
             finalPage = offset;
+        } else if (granule >= 0n) {
+            previousGranule = granule;
         }
 
         offset += pageLength;
-    }
-
-    if (offset !== data.length) {
-        throw new Error("OGGデータの終端が不正です。");
     }
 
     if (finalPage < 0) {
         throw new Error("OGGの最終ページが見つかりません。");
     }
 
-    const finalView = new DataView(
-        data.buffer,
-        data.byteOffset,
-        data.byteLength
-    );
-
-    const currentGranule = finalView.getBigInt64(
-        finalPage + 6,
-        true
-    );
-
     const target = BigInt(targetSamples);
 
-    if (currentGranule < 0n) {
-        throw new Error("OGGの最終再生位置が不正です。");
-    }
-
-    if (target < currentGranule) {
+    if (target < previousGranule) {
         throw new Error(
-            `目標サンプル数が現在の再生位置より小さいです。\n現在: ${currentGranule}\n目標: ${target}`
+            `最終ページより前の再生位置が目標を超えています。\n` +
+            `前のページ: ${previousGranule}\n` +
+            `目標: ${target}`
         );
     }
 
-    finalView.setBigInt64(finalPage + 6, target, true);
+    view.setBigInt64(finalPage + 6, target, true);
+    view.setUint32(finalPage + 22, 0, true);
 
-    /*
-     * CRC計算前にチェックサム欄を0にする。
-     */
-    finalView.setUint32(finalPage + 22, 0, true);
-
-    const pageSegments = data[finalPage + 26];
-
+    const segments = data[finalPage + 26];
     let bodyLength = 0;
 
-    for (let i = 0; i < pageSegments; i++) {
+    for (let i = 0; i < segments; i++) {
         bodyLength += data[finalPage + 27 + i];
     }
 
-    const pageLength = 27 + pageSegments + bodyLength;
+    const pageLength = 27 + segments + bodyLength;
 
     const page = data.subarray(
         finalPage,
         finalPage + pageLength
     );
 
-    const crc = calculateCRC(page);
-
-    finalView.setUint32(finalPage + 22, crc, true);
+    view.setUint32(
+        finalPage + 22,
+        calculateCRC(page),
+        true
+    );
 
     return data;
 }
@@ -665,9 +653,7 @@ async function convertHorn(horn, index, total, audioContext) {
         sampleRate * INTERVAL
     );
 
-    if (samplesPerSegment <= 0) {
-        throw new Error("サンプル数が不正です。");
-    }
+    const lookAheadSamples = 4096;
 
     const segmentCount = Math.ceil(
         totalSamples / samplesPerSegment
@@ -683,33 +669,31 @@ async function convertHorn(horn, index, total, audioContext) {
             totalSamples
         );
 
-        const actualSamples = endSample - startSample;
-
-        if (actualSamples <= 0) {
-            continue;
-        }
-
         const channelData = [];
 
         for (let channel = 0; channel < channels; channel++) {
             const source = audioBuffer.getChannelData(channel);
 
             const output = new Float32Array(
-                samplesPerSegment
+                samplesPerSegment + lookAheadSamples
             );
 
-            /*
-             * 元音声の連続した区間をそのままコピーする。
-             * 通常区間には無音を挿入しない。
-             *
-             * 最終区間が0.2秒未満の場合のみ、
-             * 配列の残り部分が0のままになるため、
-             * その部分が無音補完になる。
-             */
             output.set(
                 source.subarray(startSample, endSample),
                 0
             );
+
+            const lookAheadEnd = Math.min(
+                endSample + lookAheadSamples,
+                totalSamples
+            );
+
+            if (lookAheadEnd > endSample) {
+                output.set(
+                    source.subarray(endSample, lookAheadEnd),
+                    samplesPerSegment
+                );
+            }
 
             channelData.push(output);
         }
@@ -724,13 +708,8 @@ async function convertHorn(horn, index, total, audioContext) {
             encoder.encode(channelData);
 
             const originalBlob = encoder.finish("audio/ogg");
-
             const originalBuffer = await originalBlob.arrayBuffer();
 
-            /*
-             * 最終ページのGranule Positionを
-             * 0.2秒分のサンプル数に合わせる。
-             */
             const fixedData = fixOggGranulePosition(
                 originalBuffer,
                 samplesPerSegment
@@ -741,13 +720,8 @@ async function convertHorn(horn, index, total, audioContext) {
                 { type: "audio/ogg" }
             );
 
-            /*
-             * 実際にOGGを再デコードして長さを検証する。
-             */
             const verificationBuffer = await audioContext.decodeAudioData(
-                fixedBlob.slice(0).arrayBuffer
-                    ? await fixedBlob.arrayBuffer()
-                    : await fixedBlob.arrayBuffer()
+                await fixedBlob.arrayBuffer()
             );
 
             if (verificationBuffer.length !== samplesPerSegment) {
@@ -758,11 +732,9 @@ async function convertHorn(horn, index, total, audioContext) {
                 );
             }
 
-            const fileName = `${horn.id}_${i + 1}.ogg`;
-
             segments.push({
                 index: i + 1,
-                fileName,
+                fileName: `${horn.id}_${i + 1}.ogg`,
                 blob: fixedBlob
             });
 
@@ -776,11 +748,9 @@ async function convertHorn(horn, index, total, audioContext) {
             throw error;
         }
 
-        const progress = (
+        setProgress(
             ((index + (i + 1) / segmentCount) / total) * 75
         );
-
-        setProgress(progress);
     }
 
     return segments;
@@ -928,7 +898,7 @@ async function generateAddon() {
                             {
                                 name:
                                     `sounds/${horn.id}/` +
-                                    segment.fileName.replace(/\\.ogg$/i, ""),
+                                    segment.fileName.replace(/\.ogg$/i, ""),
                                 volume: horn.volume
                             }
                         ]
