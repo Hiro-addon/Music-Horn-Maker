@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -316,7 +315,6 @@ throw new Error(`${horn.name} の音源を読み込めませんでした。ブ�
 
 const sampleRate=audioBuffer.sampleRate;
 const channels=audioBuffer.numberOfChannels;
-// 固定長を整数サンプル数に変換し、各境界を同じサンプル数で切る。
 const samplesPerInterval=Math.round(INTERVAL*sampleRate);
 const actualInterval=samplesPerInterval/sampleRate;
 if(samplesPerInterval<1||Math.abs(actualInterval-INTERVAL)>INTERVAL_TOLERANCE){
@@ -405,7 +403,7 @@ const rpUuid=uuid();
 const packName="Music Horn Maker";
 const description="Music Horn Makerで生成されたカスタムミュージックホーンです。";
 const version="1.0.0";
-const engine="1.26.0";
+const engine="1.20.0";
 
 const rp=zip.folder("Music Horn Maker RP");
 const bp=zip.folder("Music Horn Maker BP");
