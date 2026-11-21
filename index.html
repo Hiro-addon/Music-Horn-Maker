@@ -403,6 +403,14 @@ throw new Error("OGG変換エンジンを読み込めませんでした。ペー
 
 const zip=new JSZip();
 
+const iconResponse=await fetch(new URL("./pack_icon.png",window.location.href));
+if(!iconResponse.ok)throw new Error("GitHub Pagesのrootにpack_icon.pngが見つかりません。");
+const packIcon=new Uint8Array(await iconResponse.arrayBuffer());
+const pngSignature=[137,80,78,71,13,10,26,10];
+if(packIcon.length<pngSignature.length||!pngSignature.every((byte,index)=>packIcon[index]===byte)){
+throw new Error("root/pack_icon.pngが有効なPNG画像ではありません。");
+}
+
 const bpUuid=uuid();
 const rpUuid=uuid();
 
@@ -413,6 +421,8 @@ const engine="1.20.0";
 
 const rp=zip.folder("Music Horn Maker RP");
 const bp=zip.folder("Music Horn Maker BP");
+rp.file("pack_icon.png",packIcon);
+bp.file("pack_icon.png",packIcon);
 
 const soundDefinitions={};
 const soundFiles=[];
