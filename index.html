@@ -73,7 +73,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 <h2 id="horn-settings-heading">ホーンの設定</h2>
 <p class="fixed-info">音源の分割間隔：0.200秒（誤差±0.005秒以内）<br>最後の端数部分は、短い区間として保存されます。</p>
 <div id="hornList" role="group" aria-label="ホーン一覧"></div>
-<button class="add" id="addHorn" type="button">＋ ホーン追加</button>
+<button class="add" id="addHorn" type="button">＋ ホーン追加（最大5つ）</button>
 </section>
 
 <section class="section" aria-labelledby="addon-heading">
@@ -88,6 +88,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 <script>
 const INTERVAL=0.2;
 const INTERVAL_TOLERANCE=0.005;
+const MAX_HORNS=5;
 const $=id=>document.getElementById(id);
 
 function setStatus(message){
@@ -109,15 +110,19 @@ return value.split(".").map(v=>parseInt(v,10)||0);
 }
 
 function updateHornNumbers(){
-document.querySelectorAll(".horn-card").forEach((card,index)=>{
+const cards=document.querySelectorAll(".horn-card");
+cards.forEach((card,index)=>{
 card.querySelector(".horn-title").textContent=`ホーン ${index+1}`;
 card.setAttribute("aria-labelledby",card.querySelector(".horn-title").id);
 card.querySelector(".remove").setAttribute("aria-label",`ホーン ${index+1} を削除`);
 });
+$("addHorn").disabled=cards.length>=MAX_HORNS;
 }
 
 function createHorn(){
-const number=document.querySelectorAll(".horn-card").length+1;
+const hornCount=document.querySelectorAll(".horn-card").length;
+if(hornCount>=MAX_HORNS)return;
+const number=hornCount+1;
 const fieldPrefix=`horn-${uuid()}`;
 const card=document.createElement("section");
 card.className="horn-card";
@@ -190,6 +195,7 @@ volume:Number(card.querySelector(".horn-volume").value)
 
 function validate(horns){
 if(horns.length===0)throw new Error("ホーンを1つ以上追加してください。");
+if(horns.length>MAX_HORNS)throw new Error(`ホーンは最大${MAX_HORNS}つまでです。`);
 
 const ids=new Set();
 
@@ -533,7 +539,7 @@ console.error(error);
 setStatus("エラーが発生しました: "+(error.message||error));
 }finally{
 button.disabled=false;
-$("addHorn").disabled=false;
+updateHornNumbers();
 }
 }
 
