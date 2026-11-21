@@ -166,8 +166,6 @@ if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(
 }
 
 function createBehaviorManifest(name,description,version,engine,bpUuid,rpUuid){
-const bpModuleUuid=uuid();
-
 const manifest={
 format_version:2,
 header:{
@@ -181,7 +179,7 @@ modules:[
 {
 description:description,
 type:"data",
-uuid:bpModuleUuid,
+uuid:uuid(),
 version:versionArray(version)
 },
 {
@@ -344,7 +342,6 @@ const rpUuid=uuid();
 
 const packName="Music Horn Maker";
 const description="Music Horn Makerで生成されたカスタムミュージックホーン";
-
 const version="1.0.0";
 const engine="1.26.0";
 
