@@ -4,801 +4,434 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#ffffff">
 <title>Music Horn Maker</title>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.js"></script>
-
 <style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    padding: 20px;
-    background: #f5f6f8;
-    color: #222;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.container {
-    max-width: 720px;
-    margin: 0 auto;
-}
-
-header {
-    margin-bottom: 24px;
-}
-
-h1 {
-    margin: 0 0 8px;
-    font-size: 27px;
-}
-
-.subtitle {
-    color: #777;
-    font-size: 14px;
-}
-
-.panel {
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 14px;
-    padding: 18px;
-    margin-bottom: 16px;
-}
-
-.panel h2 {
-    margin: 0 0 14px;
-    font-size: 18px;
-}
-
-.horn-card {
-    padding: 15px;
-    border: 1px solid #e5e5e5;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    background: #fff;
-}
-
-.horn-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-
-.horn-title {
-    font-weight: 700;
-    font-size: 16px;
-}
-
-.field {
-    margin-bottom: 13px;
-}
-
-.field:last-child {
-    margin-bottom: 0;
-}
-
-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: #555;
-}
-
-input[type="text"],
-input[type="number"] {
-    width: 100%;
-    padding: 11px 12px;
-    border: 1px solid #d8d8d8;
-    border-radius: 8px;
-    font-size: 15px;
-    background: #fff;
-    color: #222;
-}
-
-input[type="file"] {
-    width: 100%;
-    font-size: 14px;
-}
-
-button {
-    border: 0;
-    border-radius: 9px;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.primary {
-    width: 100%;
-    background: #222;
-    color: #fff;
-    padding: 15px;
-    font-size: 16px;
-}
-
-.secondary {
-    background: #eee;
-    color: #222;
-}
-
-.delete {
-    background: #fff0f0;
-    color: #d33;
-    padding: 8px 12px;
-}
-
-.add-button {
-    width: 100%;
-    background: #f0f1f3;
-    color: #222;
-    margin-top: 4px;
-}
-
-.status {
-    display: none;
-    padding: 13px;
-    border-radius: 9px;
-    margin-top: 14px;
-    font-size: 13px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-.status.info {
-    display: block;
-    background: #eef5ff;
-    color: #24548a;
-}
-
-.status.success {
-    display: block;
-    background: #eaf8ef;
-    color: #236b3b;
-}
-
-.status.error {
-    display: block;
-    background: #fff0f0;
-    color: #a22;
-}
-
-.progress {
-    width: 100%;
-    height: 7px;
-    background: #eee;
-    border-radius: 20px;
-    overflow: hidden;
-    margin-top: 14px;
-    display: none;
-}
-
-.progress-bar {
-    width: 0%;
-    height: 100%;
-    background: #222;
-    transition: width .2s;
-}
-
-.note {
-    color: #777;
-    font-size: 12px;
-    line-height: 1.7;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-    font-size: 13px;
-}
-
-.info-row:last-child {
-    border-bottom: 0;
-}
-
-@media (max-width: 480px) {
-    body {
-        padding: 13px;
-    }
-
-    .panel {
-        padding: 14px;
-    }
-}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#f5f6f8;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.container{max-width:760px;margin:0 auto}
+header{margin-bottom:25px}
+header h1{margin:0;font-size:27px}
+header p{color:#777;margin-top:7px}
+.section{background:white;padding:20px;border-radius:14px;margin-bottom:18px;box-shadow:0 2px 8px #00000008}
+.section h2{margin:0 0 18px;font-size:19px}
+.horn-card{border:1px solid #e2e4e8;border-radius:12px;padding:16px;margin-bottom:14px;background:#fff}
+.horn-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.horn-title{font-size:17px;font-weight:700}
+.field{margin-bottom:15px}
+.field label.field-label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#555}
+input[type="text"],input[type="number"]{width:100%;padding:12px;border:1px solid #d9dce2;border-radius:8px;font-size:15px;background:white;color:#222}
+input:focus{outline:none;border-color:#4285f4}
+.file-select{width:100%;min-height:100px;border:2px dashed #cbd0d8;border-radius:10px;background:#fafbfc;color:#555;display:flex;align-items:center;justify-content:center;text-align:center;padding:15px;font-size:14px;font-weight:400}
+.file-info{margin-top:8px;font-size:13px;color:#777;overflow-wrap:anywhere}
+button{border:none;border-radius:9px;padding:13px 17px;font-size:14px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.add{width:100%;background:#edf3ff;color:#2463c7;margin-top:5px}
+.remove{background:#fff0f0;color:#d33;padding:8px 13px}
+.generate{width:100%;background:#2463d4;color:white;font-size:16px;padding:16px}
+.status{margin-top:15px;color:#555;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.progress{height:7px;background:#e8eaf0;border-radius:10px;margin-top:12px;overflow:hidden}
+.progress-bar{width:0%;height:100%;background:#3478e5;transition:width .2s}
+.note{font-size:12px;line-height:1.7;color:#777;margin-top:12px}
+.fixed-info{padding:12px;background:#f2f6ff;border-radius:9px;color:#315fa8;font-size:13px;margin-bottom:16px}
+.hidden-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 </style>
 </head>
-
 <body>
-
 <div class="container">
-
 <header>
-    <h1>Music Horn Maker</h1>
-    <div class="subtitle">Minecraft Bedrock Edition カスタムミュージックホーン作成ツール</div>
+<h1>Music Horn Maker</h1>
+<p>カスタムミュージックホーンを作成</p>
 </header>
 
-<div class="panel">
-    <h2>ホーン設定</h2>
-    <div id="hornList"></div>
-
-    <button class="add-button" id="addHornButton">
-        ＋ ホーンを追加
-    </button>
+<div class="section">
+<h2>ホーン設定</h2>
+<div class="fixed-info">音源の分割間隔：0.2秒（固定）<br>最後の余り部分もそのまま保存されるよ。</div>
+<div id="hornList"></div>
+<button class="add" id="addHorn" type="button">＋ ホーンを追加</button>
 </div>
 
-<div class="panel">
-    <h2>変換設定</h2>
-
-    <div class="info-row">
-        <span>分割間隔</span>
-        <strong>0.2秒固定</strong>
-    </div>
-
-    <div class="info-row">
-        <span>音声形式</span>
-        <strong>OGG Vorbis</strong>
-    </div>
-
-    <div class="info-row">
-        <span>BP Script API</span>
-        <strong>2.7.0</strong>
-    </div>
-
-    <div class="info-row">
-        <span>登録イベント</span>
-        <strong>hiro:music_horn_register</strong>
-    </div>
-
-    <p class="note">
-        音声は0.2秒ごとに分割されます。
-        最後の区間だけ0.2秒に満たない場合は、不足部分を無音で補完します。
-    </p>
+<div class="section">
+<h2>アドオン生成</h2>
+<button class="generate" id="generateBtn" type="button">mcaddonを生成</button>
+<div class="progress"><div class="progress-bar" id="bar"></div></div>
+<div class="status" id="status">準備完了</div>
+<div class="note">音源はOGG Vorbis形式に変換され、0.2秒間隔で分割されるよ。</div>
 </div>
-
-<div class="panel">
-    <h2>アドオン生成</h2>
-
-    <button class="primary" id="generateButton">
-        mcaddonを生成
-    </button>
-
-    <div class="progress" id="progress">
-        <div class="progress-bar" id="progressBar"></div>
-    </div>
-
-    <div class="status" id="status"></div>
-</div>
-
 </div>
 
 <script>
-"use strict";
+const INTERVAL=0.2;
+const $=id=>document.getElementById(id);
 
-const INTERVAL = 0.2;
-const SERVER_VERSION = "2.7.0";
-const MIN_ENGINE_VERSION = [1, 26, 0];
-
-const hornList = document.getElementById("hornList");
-const addHornButton = document.getElementById("addHornButton");
-const generateButton = document.getElementById("generateButton");
-const statusElement = document.getElementById("status");
-const progressElement = document.getElementById("progress");
-const progressBar = document.getElementById("progressBar");
-
-let horns = [];
-let nextHornNumber = 1;
-
-function createUUID() {
-    return crypto.randomUUID();
+function setStatus(message){
+$("status").textContent=message;
 }
 
-function showStatus(message, type = "info") {
-    statusElement.textContent = message;
-    statusElement.className = "status " + type;
+function setProgress(value){
+$("bar").style.width=Math.max(0,Math.min(100,value))+"%";
 }
 
-function setProgress(value) {
-    progressElement.style.display = "block";
-    progressBar.style.width =
-        Math.max(0, Math.min(100, value)) + "%";
+function uuid(){
+return crypto.randomUUID();
 }
 
-function createHorn() {
-    const number = nextHornNumber++;
-
-    horns.push({
-        id: `custom_horn_${number}`,
-        name: `カスタムホーン ${number}`,
-        file: null,
-        volume: 1
-    });
-
-    renderHorns();
+function versionArray(value){
+return value.split(".").map(v=>parseInt(v,10)||0);
 }
 
-function renderHorns() {
-    hornList.innerHTML = "";
-
-    horns.forEach((horn, index) => {
-        const card = document.createElement("div");
-        card.className = "horn-card";
-
-        const top = document.createElement("div");
-        top.className = "horn-top";
-
-        const title = document.createElement("div");
-        title.className = "horn-title";
-        title.textContent = `ホーン ${index + 1}`;
-
-        const deleteButton = document.createElement("button");
-        deleteButton.className = "delete";
-        deleteButton.textContent = "削除";
-
-        deleteButton.addEventListener("click", () => {
-            horns.splice(index, 1);
-            renderHorns();
-        });
-
-        top.appendChild(title);
-        top.appendChild(deleteButton);
-
-        const idField = document.createElement("div");
-        idField.className = "field";
-
-        const idLabel = document.createElement("label");
-        idLabel.textContent = "ホーンID";
-
-        const idInput = document.createElement("input");
-        idInput.type = "text";
-        idInput.value = horn.id;
-        idInput.autocapitalize = "off";
-        idInput.autocomplete = "off";
-
-        idInput.addEventListener("input", () => {
-            horn.id = idInput.value;
-        });
-
-        idField.appendChild(idLabel);
-        idField.appendChild(idInput);
-
-        const nameField = document.createElement("div");
-        nameField.className = "field";
-
-        const nameLabel = document.createElement("label");
-        nameLabel.textContent = "表示名";
-
-        const nameInput = document.createElement("input");
-        nameInput.type = "text";
-        nameInput.value = horn.name;
-
-        nameInput.addEventListener("input", () => {
-            horn.name = nameInput.value;
-            title.textContent =
-                horn.name || `ホーン ${index + 1}`;
-        });
-
-        nameField.appendChild(nameLabel);
-        nameField.appendChild(nameInput);
-
-        const fileField = document.createElement("div");
-        fileField.className = "field";
-
-        const fileLabel = document.createElement("label");
-        fileLabel.textContent = "音声ファイル";
-
-        const fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.accept = "audio/*,.wav,.mp3,.ogg,.m4a";
-
-        fileInput.addEventListener("change", () => {
-            horn.file =
-                fileInput.files && fileInput.files[0]
-                    ? fileInput.files[0]
-                    : null;
-        });
-
-        fileField.appendChild(fileLabel);
-        fileField.appendChild(fileInput);
-
-        const volumeField = document.createElement("div");
-        volumeField.className = "field";
-
-        const volumeLabel = document.createElement("label");
-        volumeLabel.textContent = "音量";
-
-        const volumeInput = document.createElement("input");
-        volumeInput.type = "number";
-        volumeInput.min = "0";
-        volumeInput.max = "16";
-        volumeInput.step = "0.1";
-        volumeInput.value = horn.volume;
-
-        volumeInput.addEventListener("input", () => {
-            horn.volume = Number(volumeInput.value);
-        });
-
-        volumeField.appendChild(volumeLabel);
-        volumeField.appendChild(volumeInput);
-
-        card.appendChild(top);
-        card.appendChild(idField);
-        card.appendChild(nameField);
-        card.appendChild(fileField);
-        card.appendChild(volumeField);
-
-        hornList.appendChild(card);
-    });
+function updateHornNumbers(){
+document.querySelectorAll(".horn-card").forEach((card,index)=>{
+card.querySelector(".horn-title").textContent=`ホーン ${index+1}`;
+});
 }
 
-addHornButton.addEventListener("click", createHorn);
+function createHorn(){
+const number=document.querySelectorAll(".horn-card").length+1;
+const card=document.createElement("section");
+card.className="horn-card";
 
-function validateHorns() {
-    if (horns.length === 0) {
-        throw new Error("ホーンを1つ以上追加してください。");
-    }
+card.innerHTML=`
+<div class="horn-head">
+<div class="horn-title">ホーン ${number}</div>
+<button type="button" class="remove">削除</button>
+</div>
+<div class="field">
+<label class="field-label">ホーンID</label>
+<input type="text" class="horn-id" value="custom_horn_${number}" placeholder="custom_horn_1">
+</div>
+<div class="field">
+<label class="field-label">ホーン名</label>
+<input type="text" class="horn-name" value="カスタムホーン ${number}" placeholder="ホーン名">
+</div>
+<div class="field">
+<label class="field-label">音源ファイル</label>
+<button type="button" class="file-select">音源ファイルを選択<br>タップしてファイルを選ぶ</button>
+<input type="file" class="horn-audio hidden-file">
+<div class="file-info">ファイル未選択</div>
+</div>
+<div class="field">
+<label class="field-label">音量</label>
+<input type="number" class="horn-volume" value="1" min="0" max="16" step="0.1">
+</div>
+`;
 
-    const ids = new Set();
+const audioInput=card.querySelector(".horn-audio");
+const fileButton=card.querySelector(".file-select");
 
-    const reservedIds = new Set([
-        "jr_east_mh",
-        "jr_west_local_line_mh",
-        "jr_west_limited_express_mh",
-        "odakyu_romancecar_mh",
-        "keisei_skyliner_mh",
-        "saphir_odori_mh"
-    ]);
+fileButton.addEventListener("click",()=>audioInput.click());
 
-    for (let i = 0; i < horns.length; i++) {
-        const horn = horns[i];
+audioInput.addEventListener("change",()=>{
+const file=audioInput.files&&audioInput.files[0];
+card.querySelector(".file-info").textContent=file?file.name:"ファイル未選択";
+fileButton.textContent=file?"音源を変更する":"音源ファイルを選択";
+});
 
-        if (!/^[a-z0-9_]+$/.test(horn.id)) {
-            throw new Error(
-                `ホーン ${i + 1} のIDが不正です。\n` +
-                "半角英小文字・数字・アンダーバーのみ使用できます。"
-            );
-        }
+card.querySelector(".remove").addEventListener("click",()=>{
+card.remove();
+updateHornNumbers();
+});
 
-        if (!horn.name || horn.name.length > 64) {
-            throw new Error(
-                `ホーン ${i + 1} の表示名を入力してください。\n最大64文字です。`
-            );
-        }
-
-        if (reservedIds.has(horn.id)) {
-            throw new Error(
-                `ホーン ${i + 1} のIDは標準ホーンで使用されています。`
-            );
-        }
-
-        if (ids.has(horn.id)) {
-            throw new Error(
-                `ホーンID「${horn.id}」が重複しています。`
-            );
-        }
-
-        ids.add(horn.id);
-
-        if (!horn.file) {
-            throw new Error(
-                `ホーン ${i + 1} の音声ファイルを選択してください。`
-            );
-        }
-
-        if (
-            !Number.isFinite(horn.volume) ||
-            horn.volume < 0 ||
-            horn.volume > 16
-        ) {
-            throw new Error(
-                `ホーン ${i + 1} の音量は0～16で指定してください。`
-            );
-        }
-    }
+$("hornList").appendChild(card);
+updateHornNumbers();
 }
 
-function fixOggGranulePosition(input, targetSamples) {
-    const data = new Uint8Array(input);
-    const view = new DataView(
-        data.buffer,
-        data.byteOffset,
-        data.byteLength
-    );
-
-    const crcTable = new Uint32Array(256);
-
-    for (let i = 0; i < 256; i++) {
-        let crc = i << 24;
-
-        for (let j = 0; j < 8; j++) {
-            crc = (crc & 0x80000000)
-                ? ((crc << 1) ^ 0x04C11DB7)
-                : (crc << 1);
-        }
-
-        crcTable[i] = crc >>> 0;
-    }
-
-    function calculateCRC(bytes) {
-        let crc = 0;
-
-        for (const byte of bytes) {
-            const index = ((crc >>> 24) ^ byte) & 0xff;
-            crc = ((crc << 8) ^ crcTable[index]) >>> 0;
-        }
-
-        return crc >>> 0;
-    }
-
-    let offset = 0;
-    let finalPage = -1;
-    let previousGranule = 0n;
-
-    while (offset < data.length) {
-        if (offset + 27 > data.length) {
-            throw new Error("OGGページヘッダーが不正です。");
-        }
-
-        if (
-            data[offset] !== 0x4f ||
-            data[offset + 1] !== 0x67 ||
-            data[offset + 2] !== 0x67 ||
-            data[offset + 3] !== 0x53
-        ) {
-            throw new Error("OGGページが見つかりません。");
-        }
-
-        const segments = data[offset + 26];
-        const tableStart = offset + 27;
-
-        if (tableStart + segments > data.length) {
-            throw new Error("OGGセグメントテーブルが不正です。");
-        }
-
-        let bodyLength = 0;
-
-        for (let i = 0; i < segments; i++) {
-            bodyLength += data[tableStart + i];
-        }
-
-        const pageLength = 27 + segments + bodyLength;
-
-        if (offset + pageLength > data.length) {
-            throw new Error("OGGページの長さが不正です。");
-        }
-
-        const granule = view.getBigInt64(offset + 6, true);
-        const isEOS = (data[offset + 5] & 0x04) !== 0;
-
-        if (isEOS) {
-            if (offset + pageLength !== data.length) {
-                throw new Error("OGGの最終ページが不正です。");
-            }
-
-            finalPage = offset;
-        } else if (granule >= 0n) {
-            previousGranule = granule;
-        }
-
-        offset += pageLength;
-    }
-
-    if (finalPage < 0) {
-        throw new Error("OGGの最終ページが見つかりません。");
-    }
-
-    const target = BigInt(targetSamples);
-
-    if (target < previousGranule) {
-        throw new Error(
-            `最終ページより前の再生位置が目標を超えています。\n` +
-            `前のページ: ${previousGranule}\n` +
-            `目標: ${target}`
-        );
-    }
-
-    view.setBigInt64(finalPage + 6, target, true);
-    view.setUint32(finalPage + 22, 0, true);
-
-    const segments = data[finalPage + 26];
-    let bodyLength = 0;
-
-    for (let i = 0; i < segments; i++) {
-        bodyLength += data[finalPage + 27 + i];
-    }
-
-    const pageLength = 27 + segments + bodyLength;
-
-    const page = data.subarray(
-        finalPage,
-        finalPage + pageLength
-    );
-
-    view.setUint32(
-        finalPage + 22,
-        calculateCRC(page),
-        true
-    );
-
-    return data;
+function readHorns(){
+return [...document.querySelectorAll(".horn-card")].map(card=>({
+id:card.querySelector(".horn-id").value.trim(),
+name:card.querySelector(".horn-name").value.trim(),
+file:card.querySelector(".horn-audio").files[0],
+volume:Number(card.querySelector(".horn-volume").value)
+}));
 }
 
-async function convertHorn(horn, index, total, audioContext) {
-    const fileData = await horn.file.arrayBuffer();
+function validate(horns){
+if(horns.length===0)throw new Error("ホーンを1つ以上追加してね");
 
-    const audioBuffer = await audioContext.decodeAudioData(
-        fileData.slice(0)
-    );
+const ids=new Set();
 
-    const sampleRate = audioBuffer.sampleRate;
-    const channels = audioBuffer.numberOfChannels;
-    const totalSamples = audioBuffer.length;
+const reservedIds=[
+"jr_east_mh",
+"jr_west_local_line_mh",
+"jr_west_limited_express_mh",
+"odakyu_romancecar_mh",
+"keisei_skyliner_mh",
+"saphir_odori_mh"
+];
 
-    const samplesPerSegment = Math.round(
-        sampleRate * INTERVAL
-    );
+for(let i=0;i<horns.length;i++){
+const horn=horns[i];
 
-    const lookAheadSamples = 4096;
+if(!horn.id)throw new Error(`ホーン ${i+1} のIDを入力してね`);
+if(!/^[a-z0-9_]+$/.test(horn.id))throw new Error(`ホーン ${i+1} のIDは半角小文字・数字・アンダーバーだけ使用できるよ`);
+if(ids.has(horn.id))throw new Error(`ホーンID「${horn.id}」が重複しているよ`);
+if(reservedIds.includes(horn.id))throw new Error(`ホーンID「${horn.id}」は内蔵ホーンで使用されているよ`);
+ids.add(horn.id);
 
-    const segmentCount = Math.ceil(
-        totalSamples / samplesPerSegment
-    );
-
-    const segments = [];
-
-    for (let i = 0; i < segmentCount; i++) {
-        const startSample = i * samplesPerSegment;
-
-        const endSample = Math.min(
-            startSample + samplesPerSegment,
-            totalSamples
-        );
-
-        const channelData = [];
-
-        for (let channel = 0; channel < channels; channel++) {
-            const source = audioBuffer.getChannelData(channel);
-
-            const output = new Float32Array(
-                samplesPerSegment + lookAheadSamples
-            );
-
-            output.set(
-                source.subarray(startSample, endSample),
-                0
-            );
-
-            const lookAheadEnd = Math.min(
-                endSample + lookAheadSamples,
-                totalSamples
-            );
-
-            if (lookAheadEnd > endSample) {
-                output.set(
-                    source.subarray(endSample, lookAheadEnd),
-                    samplesPerSegment
-                );
-            }
-
-            channelData.push(output);
-        }
-
-        const encoder = new OggVorbisEncoder(
-            sampleRate,
-            channels,
-            0.5
-        );
-
-        try {
-            encoder.encode(channelData);
-
-            const originalBlob = encoder.finish("audio/ogg");
-            const originalBuffer = await originalBlob.arrayBuffer();
-
-            const fixedData = fixOggGranulePosition(
-                originalBuffer,
-                samplesPerSegment
-            );
-
-            const fixedBlob = new Blob(
-                [fixedData],
-                { type: "audio/ogg" }
-            );
-
-            const verificationBuffer = await audioContext.decodeAudioData(
-                await fixedBlob.arrayBuffer()
-            );
-
-            if (verificationBuffer.length !== samplesPerSegment) {
-                throw new Error(
-                    `OGGの長さが不正です。\n` +
-                    `目標: ${samplesPerSegment}サンプル\n` +
-                    `実際: ${verificationBuffer.length}サンプル`
-                );
-            }
-
-            segments.push({
-                index: i + 1,
-                fileName: `${horn.id}_${i + 1}.ogg`,
-                blob: fixedBlob
-            });
-
-        } catch (error) {
-            try {
-                if (encoder.cancel) {
-                    encoder.cancel();
-                }
-            } catch {}
-
-            throw error;
-        }
-
-        setProgress(
-            ((index + (i + 1) / segmentCount) / total) * 75
-        );
-    }
-
-    return segments;
+if(!horn.name)throw new Error(`ホーン ${i+1} の名前を入力してね`);
+if(horn.name.length>64)throw new Error(`ホーン ${i+1} の名前は64文字以内にしてね`);
+if(!horn.file)throw new Error(`ホーン ${i+1} の音源ファイルを選択してね`);
+if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(`ホーン ${i+1} の音量は0〜16で入力してね`);
+}
 }
 
-function createManifest(
-    name,
-    description,
-    headerUuid,
-    moduleUuid,
-    type,
-    dependencies = []
-) {
-    return {
-        format_version: 2,
+function createBehaviorManifest(name,description,version,engine,bpUuid,rpUuid){
+const manifest={
+format_version:2,
+header:{
+name:name,
+description:description,
+uuid:bpUuid,
+version:versionArray(version),
+min_engine_version:versionArray(engine)
+},
+modules:[
+{
+description:description,
+type:"data",
+uuid:uuid(),
+version:versionArray(version)
+},
+{
+description:"Script",
+type:"script",
+language:"javascript",
+uuid:uuid(),
+version:versionArray(version),
+entry:"scripts/main.js"
+}
+],
+dependencies:[
+{
+module_name:"@minecraft/server",
+version:"2.7.0"
+}
+]
+};
 
-        header: {
-            name,
-            description,
-            uuid: headerUuid,
-            version: [1, 0, 0],
-            min_engine_version: MIN_ENGINE_VERSION
-        },
-
-        modules: [
-            {
-                type,
-                uuid: moduleUuid,
-                version: [1, 0, 0],
-                ...(type === "script"
-                    ? {
-                        language: "javascript",
-                        entry: "scripts/main.js"
-                    }
-                    : {})
-            }
-        ],
-
-        dependencies
-    };
+if(rpUuid){
+manifest.dependencies.unshift({
+uuid:rpUuid,
+version:versionArray(version)
+});
 }
 
-function createMainJs(registrationData) {
-    return `
+return manifest;
+}
+
+function createResourceManifest(name,description,version,engine,rpUuid,bpUuid){
+const manifest={
+format_version:2,
+header:{
+name:name,
+description:description,
+uuid:rpUuid,
+version:versionArray(version),
+min_engine_version:versionArray(engine)
+},
+modules:[
+{
+description:"Resources",
+type:"resources",
+uuid:uuid(),
+version:versionArray(version)
+}
+]
+};
+
+if(bpUuid){
+manifest.dependencies=[
+{
+uuid:bpUuid,
+version:versionArray(version)
+}
+];
+}
+
+return manifest;
+}
+
+async function convertHorn(horn,index,total){
+const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+
+if(!AudioContextClass){
+throw new Error("このブラウザは音声読み込みに対応していないよ");
+}
+
+const audioContext=new AudioContextClass();
+
+try{
+const fileData=await horn.file.arrayBuffer();
+let audioBuffer;
+
+try{
+audioBuffer=await audioContext.decodeAudioData(fileData);
+}catch(error){
+throw new Error(`${horn.name} の音源を読み込めなかったよ。Safariが対応している音声形式か確認してね。`);
+}
+
+const duration=audioBuffer.duration;
+const sampleRate=audioBuffer.sampleRate;
+const channels=audioBuffer.numberOfChannels;
+const segmentCount=Math.ceil(duration/INTERVAL);
+
+if(segmentCount<1)throw new Error(`${horn.name} の音声が空だよ`);
+if(channels>2)throw new Error(`${horn.name} は3チャンネル以上の音源に対応していないよ`);
+
+const segments=[];
+
+for(let i=0;i<segmentCount;i++){
+const startSample=Math.floor(i*INTERVAL*sampleRate);
+const endSample=Math.min(
+audioBuffer.length,
+Math.round(Math.min((i+1)*INTERVAL,duration)*sampleRate)
+);
+
+if(endSample<=startSample)continue;
+
+const channelData=[];
+
+for(let channel=0;channel<channels;channel++){
+channelData.push(audioBuffer.getChannelData(channel).slice(startSample,endSample));
+}
+
+let encoder;
+
+try{
+encoder=new OggVorbisEncoder(sampleRate,channels,0.5);
+encoder.encode(channelData);
+
+const blob=encoder.finish("audio/ogg");
+const data=new Uint8Array(await blob.arrayBuffer());
+
+if(data.length===0)throw new Error("変換後のデータが空だよ");
+
+segments.push({
+hornId:horn.id,
+index:i+1,
+fileName:`${horn.id}_${i+1}.ogg`,
+data
+});
+}catch(error){
+if(encoder){
+try{encoder.cancel()}catch(e){}
+}
+throw new Error(`${horn.name} のOGG変換に失敗したよ: ${error.message||error}`);
+}
+
+const progress=((index+(i+1)/segmentCount)/total)*80;
+setProgress(progress);
+setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
+await new Promise(resolve=>setTimeout(resolve,0));
+}
+
+return segments;
+}finally{
+await audioContext.close();
+}
+}
+
+async function generate(){
+const button=$("generateBtn");
+if(button.disabled)return;
+
+button.disabled=true;
+$("addHorn").disabled=true;
+
+try{
+const horns=readHorns();
+validate(horns);
+
+if(typeof OggVorbisEncoder==="undefined"){
+throw new Error("OGG変換エンジンを読み込めなかったよ。ページを再読み込みしてね。");
+}
+
+const zip=new JSZip();
+
+const bpUuid=uuid();
+const rpUuid=uuid();
+
+const packName="Music Horn Maker";
+const description="Music Horn Makerで生成されたカスタムミュージックホーン";
+const version="1.0.0";
+const engine="1.26.0";
+
+const rp=zip.folder("Music Horn Maker RP");
+const bp=zip.folder("Music Horn Maker BP");
+
+const soundDefinitions={};
+const soundFiles=[];
+const registrationData=[];
+
+for(let i=0;i<horns.length;i++){
+const horn=horns[i];
+const segments=await convertHorn(horn,i,horns.length);
+
+registrationData.push({
+id:horn.id,
+name:horn.name,
+count:segments.length
+});
+
+for(const segment of segments){
+const soundId=`${horn.id}_${segment.index}`;
+
+soundDefinitions[soundId]={
+category:"neutral",
+sounds:[
+{
+name:`sounds/${horn.id}/${segment.fileName.replace(/\.ogg$/,"")}`,
+volume:horn.volume
+}
+]
+};
+
+soundFiles.push(segment);
+}
+}
+
+setStatus("リソースパックを作成中...");
+setProgress(85);
+
+const rpManifest=createResourceManifest(
+packName+" RP",
+description,
+version,
+engine,
+rpUuid,
+bpUuid
+);
+
+rp.file("manifest.json",JSON.stringify(rpManifest,null,2));
+
+rp.file("sounds/sound_definitions.json",JSON.stringify({
+format_version:"1.20.20",
+sound_definitions:soundDefinitions
+},null,2));
+
+for(const segment of soundFiles){
+rp.file(`sounds/${segment.hornId}/${segment.fileName}`,segment.data);
+}
+
+setStatus("ビヘイビアーパックを作成中...");
+setProgress(90);
+
+const bpManifest=createBehaviorManifest(
+packName+" BP",
+description,
+version,
+engine,
+bpUuid,
+rpUuid
+);
+
+bp.file("manifest.json",JSON.stringify(bpManifest,null,2));
+
+const mainJs=`
 import { system } from "@minecraft/server";
 
-const HORNS = ${JSON.stringify(registrationData, null, 4)};
-
+const HORNS = ${JSON.stringify(registrationData,null,4)};
 const EVENT_ID = "hiro:music_horn_register";
 
 function registerHorns() {
@@ -822,251 +455,43 @@ system.runInterval(() => {
     registerHorns();
 }, 100);
 `;
+
+bp.file("scripts/main.js",mainJs);
+
+setStatus("mcaddonを生成中...");
+setProgress(95);
+
+const output=await zip.generateAsync({
+type:"blob",
+compression:"DEFLATE",
+compressionOptions:{level:6}
+});
+
+const url=URL.createObjectURL(output);
+const link=document.createElement("a");
+link.href=url;
+link.download="Music_Horn_Maker.mcaddon";
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+setTimeout(()=>URL.revokeObjectURL(url),10000);
+
+setProgress(100);
+setStatus("生成完了！mcaddonを保存したよ。");
+
+}catch(error){
+console.error(error);
+setStatus("エラー: "+(error.message||error));
+}finally{
+button.disabled=false;
+$("addHorn").disabled=false;
+}
 }
 
-async function generateAddon() {
-    generateButton.disabled = true;
-    addHornButton.disabled = true;
-
-    progressBar.style.width = "0%";
-    progressElement.style.display = "block";
-
-    try {
-        validateHorns();
-
-        if (typeof OggVorbisEncoder === "undefined") {
-            throw new Error(
-                "OggVorbisEncoderを読み込めませんでした。\nページを再読み込みしてください。"
-            );
-        }
-
-        if (typeof JSZip === "undefined") {
-            throw new Error(
-                "JSZipを読み込めませんでした。\nページを再読み込みしてください。"
-            );
-        }
-
-        showStatus("音声変換を開始します。", "info");
-
-        const AudioContextClass =
-            window.AudioContext ||
-            window.webkitAudioContext;
-
-        if (!AudioContextClass) {
-            throw new Error(
-                "このブラウザではAudioContextを使用できません。"
-            );
-        }
-
-        const audioContext = new AudioContextClass();
-
-        const rpZip = new JSZip();
-        const bpZip = new JSZip();
-
-        const soundDefinitions = {};
-        const registrationData = [];
-
-        try {
-            for (let i = 0; i < horns.length; i++) {
-                const horn = horns[i];
-
-                showStatus(
-                    `音声変換中...\n${horn.name}`,
-                    "info"
-                );
-
-                const segments = await convertHorn(
-                    horn,
-                    i,
-                    horns.length,
-                    audioContext
-                );
-
-                registrationData.push({
-                    id: horn.id,
-                    name: horn.name,
-                    count: segments.length
-                });
-
-                for (const segment of segments) {
-                    const soundId =
-                        `${horn.id}_${segment.index}`;
-
-                    soundDefinitions[soundId] = {
-                        category: "neutral",
-                        sounds: [
-                            {
-                                name:
-                                    `sounds/${horn.id}/` +
-                                    segment.fileName.replace(/\.ogg$/i, ""),
-                                volume: horn.volume
-                            }
-                        ]
-                    };
-
-                    rpZip.file(
-                        `sounds/${horn.id}/${segment.fileName}`,
-                        segment.blob
-                    );
-                }
-            }
-        } finally {
-            await audioContext.close();
-        }
-
-        setProgress(80);
-
-        showStatus(
-            "アドオンのファイルを作成しています...",
-            "info"
-        );
-
-        rpZip.file(
-            "sound_definitions.json",
-            JSON.stringify(
-                {
-                    format_version: "1.14.0",
-                    sound_definitions: soundDefinitions
-                },
-                null,
-                4
-            )
-        );
-
-        const bpHeaderUuid = createUUID();
-        const bpModuleUuid = createUUID();
-
-        const rpHeaderUuid = createUUID();
-        const rpModuleUuid = createUUID();
-
-        const bpManifest = createManifest(
-            "Music Horn Maker BP",
-            "Music Horn Maker Custom Horn Registration",
-            bpHeaderUuid,
-            bpModuleUuid,
-            "script",
-            [
-                {
-                    module_name: "@minecraft/server",
-                    version: SERVER_VERSION
-                }
-            ]
-        );
-
-        const rpManifest = createManifest(
-            "Music Horn Maker RP",
-            "Music Horn Maker Custom Horn Sounds",
-            rpHeaderUuid,
-            rpModuleUuid,
-            "resources",
-            [
-                {
-                    uuid: bpHeaderUuid,
-                    version: [1, 0, 0]
-                }
-            ]
-        );
-
-        bpZip.file(
-            "manifest.json",
-            JSON.stringify(bpManifest, null, 4)
-        );
-
-        bpZip.file(
-            "scripts/main.js",
-            createMainJs(registrationData)
-        );
-
-        setProgress(90);
-
-        const rpBlob = await rpZip.generateAsync({
-            type: "blob",
-            compression: "DEFLATE",
-            compressionOptions: {
-                level: 6
-            }
-        });
-
-        const bpBlob = await bpZip.generateAsync({
-            type: "blob",
-            compression: "DEFLATE",
-            compressionOptions: {
-                level: 6
-            }
-        });
-
-        const finalZip = new JSZip();
-
-        finalZip.file(
-            "Music Horn Maker RP.mcpack",
-            rpBlob
-        );
-
-        finalZip.file(
-            "Music Horn Maker BP.mcpack",
-            bpBlob
-        );
-
-        setProgress(95);
-
-        const finalBlob = await finalZip.generateAsync({
-            type: "blob",
-            compression: "DEFLATE",
-            compressionOptions: {
-                level: 6
-            }
-        });
-
-        const url = URL.createObjectURL(finalBlob);
-
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "Music_Horn_Maker.mcaddon";
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        setTimeout(() => {
-            URL.revokeObjectURL(url);
-        }, 30000);
-
-        setProgress(100);
-
-        showStatus(
-            "mcaddonを生成しました！\n\n" +
-            `登録ホーン数: ${registrationData.length}\n` +
-            registrationData.map(horn =>
-                `${horn.name}: ${horn.count}区間`
-            ).join("\n"),
-            "success"
-        );
-
-    } catch (error) {
-        console.error(error);
-
-        showStatus(
-            "生成に失敗しました。\n\n" +
-            (error && error.message
-                ? error.message
-                : String(error)),
-            "error"
-        );
-
-    } finally {
-        generateButton.disabled = false;
-        addHornButton.disabled = false;
-    }
-}
-
-generateButton.addEventListener(
-    "click",
-    generateAddon
-);
-
+$("addHorn").addEventListener("click",createHorn);
+$("generateBtn").addEventListener("click",generate);
 createHorn();
-
 </script>
-
 </body>
 </html>
