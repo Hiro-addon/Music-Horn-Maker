@@ -47,7 +47,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 <div class="section">
 <h2>ホーン設定</h2>
-<div class="fixed-info">音源の分割間隔：0.2秒（固定）<br>最後の余り部分もそのまま保存されるよ。</div>
+<div class="fixed-info">音源の分割間隔：0.200秒（誤差±0.005秒以内）<br>最後の余り部分もそのまま保存されるよ。</div>
 <div id="hornList"></div>
 <button class="add" id="addHorn" type="button">＋ ホーンを追加</button>
 </div>
@@ -57,12 +57,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <button class="generate" id="generateBtn" type="button">mcaddonを生成</button>
 <div class="progress"><div class="progress-bar" id="bar"></div></div>
 <div class="status" id="status">準備完了</div>
-<div class="note">音源はOGG Vorbis形式に変換され、0.2秒間隔で分割されるよ。</div>
+<div class="note">音源はOGG Vorbis形式に変換され、サンプル単位で0.200秒（誤差±0.005秒以内）ごとに分割されるよ。最後の端数部分は短い区間として保存されるよ。</div>
 </div>
 </div>
 
 <script>
 const INTERVAL=0.2;
+const INTERVAL_TOLERANCE=0.005;
 const $=id=>document.getElementById(id);
 
 function setStatus(message){
@@ -271,10 +272,15 @@ audioBuffer=await audioContext.decodeAudioData(fileData);
 throw new Error(`${horn.name} の音源を読み込めなかったよ。Safariが対応している音声形式か確認してね。`);
 }
 
-const duration=audioBuffer.duration;
 const sampleRate=audioBuffer.sampleRate;
 const channels=audioBuffer.numberOfChannels;
-const segmentCount=Math.ceil(duration/INTERVAL);
+// 固定長を整数サンプル数に変換し、各境界を同じサンプル数で切る。
+const samplesPerInterval=Math.round(INTERVAL*sampleRate);
+const actualInterval=samplesPerInterval/sampleRate;
+if(samplesPerInterval<1||Math.abs(actualInterval-INTERVAL)>INTERVAL_TOLERANCE){
+throw new Error(`${horn.name} の音源では0.200秒（±0.005秒）の分割精度を確保できないよ`);
+}
+const segmentCount=Math.ceil(audioBuffer.length/samplesPerInterval);
 
 if(segmentCount<1)throw new Error(`${horn.name} の音声が空だよ`);
 if(channels>2)throw new Error(`${horn.name} は3チャンネル以上の音源に対応していないよ`);
@@ -282,13 +288,15 @@ if(channels>2)throw new Error(`${horn.name} は3チャンネル以上の音源�
 const segments=[];
 
 for(let i=0;i<segmentCount;i++){
-const startSample=Math.floor(i*INTERVAL*sampleRate);
-const endSample=Math.min(
-audioBuffer.length,
-Math.round(Math.min((i+1)*INTERVAL,duration)*sampleRate)
-);
+const startSample=i*samplesPerInterval;
+const endSample=Math.min(startSample+samplesPerInterval,audioBuffer.length);
 
 if(endSample<=startSample)continue;
+const segmentDuration=(endSample-startSample)/sampleRate;
+const isFinalSegment=endSample===audioBuffer.length;
+if(!isFinalSegment&&Math.abs(segmentDuration-INTERVAL)>INTERVAL_TOLERANCE){
+throw new Error(`${horn.name} の ${i+1} 番目の区間が許容誤差（±0.005秒）を超えているよ`);
+}
 
 const channelData=[];
 
