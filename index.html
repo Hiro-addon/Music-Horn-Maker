@@ -47,7 +47,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 <div class="section">
 <h2>ホーン設定</h2>
-<div class="fixed-info">音源の分割間隔：0.2秒（固定）<br>最後の余り部分もそのまま保存されるよ。</div>
+<div class="fixed-info">
+音源の分割間隔：0.2秒（固定）<br>
+通常区間は元音源のみを使用。最後の区間だけ不足分に無音を追加するよ。
+</div>
 <div id="hornList"></div>
 <button class="add" id="addHorn" type="button">＋ ホーンを追加</button>
 </div>
@@ -57,7 +60,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <button class="generate" id="generateBtn" type="button">mcaddonを生成</button>
 <div class="progress"><div class="progress-bar" id="bar"></div></div>
 <div class="status" id="status">準備完了</div>
-<div class="note">音源はOGG Vorbis形式に変換され、0.2秒間隔で分割されるよ。</div>
+<div class="note">OGG Vorbis形式に変換後、再デコードしてサンプル数を検証するよ。</div>
 </div>
 </div>
 
@@ -271,29 +274,47 @@ audioBuffer=await audioContext.decodeAudioData(fileData);
 throw new Error(`${horn.name} の音源を読み込めなかったよ。Safariが対応している音声形式か確認してね。`);
 }
 
-const duration=audioBuffer.duration;
 const sampleRate=audioBuffer.sampleRate;
 const channels=audioBuffer.numberOfChannels;
-const segmentCount=Math.ceil(duration/INTERVAL);
+const totalSamples=audioBuffer.length;
 
-if(segmentCount<1)throw new Error(`${horn.name} の音声が空だよ`);
+if(totalSamples<1)throw new Error(`${horn.name} の音声が空だよ`);
 if(channels>2)throw new Error(`${horn.name} は3チャンネル以上の音源に対応していないよ`);
 
+const samplesPerSegment=sampleRate*INTERVAL;
+
+if(!Number.isInteger(samplesPerSegment)){
+throw new Error(`${horn.name} のサンプルレートでは0.2秒を整数サンプルで表現できないよ`);
+}
+
+const segmentCount=Math.ceil(totalSamples/samplesPerSegment);
 const segments=[];
 
 for(let i=0;i<segmentCount;i++){
-const startSample=Math.floor(i*INTERVAL*sampleRate);
+
+const startSample=i*samplesPerSegment;
 const endSample=Math.min(
-audioBuffer.length,
-Math.round(Math.min((i+1)*INTERVAL,duration)*sampleRate)
+startSample+samplesPerSegment,
+totalSamples
 );
 
-if(endSample<=startSample)continue;
+const isLast=i===segmentCount-1;
+const actualLength=endSample-startSample;
 
 const channelData=[];
 
 for(let channel=0;channel<channels;channel++){
-channelData.push(audioBuffer.getChannelData(channel).slice(startSample,endSample));
+
+const output=new Float32Array(samplesPerSegment);
+const source=audioBuffer.getChannelData(channel);
+
+const actualData=source.subarray(
+startSample,
+endSample
+);
+
+output.set(actualData);
+channelData.push(output);
 }
 
 let encoder;
@@ -303,9 +324,30 @@ encoder=new OggVorbisEncoder(sampleRate,channels,0.5);
 encoder.encode(channelData);
 
 const blob=encoder.finish("audio/ogg");
-const data=new Uint8Array(await blob.arrayBuffer());
+const arrayBuffer=await blob.arrayBuffer();
+const data=new Uint8Array(arrayBuffer);
 
-if(data.length===0)throw new Error("変換後のデータが空だよ");
+if(data.length===0){
+throw new Error("変換後のデータが空だよ");
+}
+
+let decoded;
+
+try{
+decoded=await audioContext.decodeAudioData(arrayBuffer.slice(0));
+}catch(error){
+throw new Error("生成したOGGを再デコードできなかったよ");
+}
+
+if(decoded.sampleRate!==sampleRate){
+throw new Error(`サンプルレートが変化したよ: ${decoded.sampleRate}Hz`);
+}
+
+if(decoded.length!==samplesPerSegment){
+throw new Error(
+`OGGの長さが不正だよ。目標:${samplesPerSegment}サンプル、実際:${decoded.length}サンプル`
+);
+}
 
 segments.push({
 hornId:horn.id,
@@ -313,20 +355,33 @@ index:i+1,
 fileName:`${horn.id}_${i+1}.ogg`,
 data
 });
+
 }catch(error){
 if(encoder){
 try{encoder.cancel()}catch(e){}
 }
-throw new Error(`${horn.name} のOGG変換に失敗したよ: ${error.message||error}`);
+
+throw new Error(
+`${horn.name} のOGG変換・長さ検証に失敗したよ: ${error.message||error}`
+);
 }
 
 const progress=((index+(i+1)/segmentCount)/total)*80;
 setProgress(progress);
-setStatus(`${horn.name} を変換中... ${i+1}/${segmentCount}`);
+
+setStatus(
+`${horn.name} を変換中... ${i+1}/${segmentCount}\n`+
+`元音源のサンプル数: ${actualLength}\n`+
+`OGGのサンプル数: ${samplesPerSegment}\n`+
+`再生時間: ${(samplesPerSegment/sampleRate).toFixed(9)}秒\n`+
+(isLast?"最後の区間：不足分のみ無音":"通常区間：元音源のみ")
+);
+
 await new Promise(resolve=>setTimeout(resolve,0));
 }
 
 return segments;
+
 }finally{
 await audioContext.close();
 }
