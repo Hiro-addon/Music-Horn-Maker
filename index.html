@@ -151,15 +151,26 @@ if(horns.length===0)throw new Error("ホーンを1つ以上追加してね");
 
 const ids=new Set();
 
+const reservedIds=[
+"jr_east_mh",
+"jr_west_local_line_mh",
+"jr_west_limited_express_mh",
+"odakyu_romancecar_mh",
+"keisei_skyliner_mh",
+"saphir_odori_mh"
+];
+
 for(let i=0;i<horns.length;i++){
 const horn=horns[i];
 
 if(!horn.id)throw new Error(`ホーン ${i+1} のIDを入力してね`);
-if(!/^[a-zA-Z0-9_.-]+$/.test(horn.id))throw new Error(`ホーン ${i+1} のIDに使用できない文字があるよ`);
+if(!/^[a-z0-9_]+$/.test(horn.id))throw new Error(`ホーン ${i+1} のIDは半角小文字・数字・アンダーバーだけ使用できるよ`);
 if(ids.has(horn.id))throw new Error(`ホーンID「${horn.id}」が重複しているよ`);
+if(reservedIds.includes(horn.id))throw new Error(`ホーンID「${horn.id}」は内蔵ホーンで使用されているよ`);
 ids.add(horn.id);
 
 if(!horn.name)throw new Error(`ホーン ${i+1} の名前を入力してね`);
+if(horn.name.length>64)throw new Error(`ホーン ${i+1} の名前は64文字以内にしてね`);
 if(!horn.file)throw new Error(`ホーン ${i+1} の音源ファイルを選択してね`);
 if(!Number.isFinite(horn.volume)||horn.volume<0||horn.volume>16)throw new Error(`ホーン ${i+1} の音量は0〜16で入力してね`);
 }
@@ -298,6 +309,7 @@ if(data.length===0)throw new Error("変換後のデータが空だよ");
 
 segments.push({
 hornId:horn.id,
+index:i+1,
 fileName:`${horn.id}_${i+1}.ogg`,
 data
 });
@@ -350,20 +362,33 @@ const bp=zip.folder("Music Horn Maker BP");
 
 const soundDefinitions={};
 const soundFiles=[];
+const registrationData=[];
 
 for(let i=0;i<horns.length;i++){
 const horn=horns[i];
 const segments=await convertHorn(horn,i,horns.length);
 
-soundDefinitions[horn.id]={
+registrationData.push({
+id:horn.id,
+name:horn.name,
+count:segments.length
+});
+
+for(const segment of segments){
+const soundId=`${horn.id}_${segment.index}`;
+
+soundDefinitions[soundId]={
 category:"neutral",
-sounds:segments.map(segment=>({
+sounds:[
+{
 name:`sounds/${horn.id}/${segment.fileName.replace(/\.ogg$/,"")}`,
 volume:horn.volume
-}))
+}
+]
 };
 
-soundFiles.push(...segments);
+soundFiles.push(segment);
+}
 }
 
 setStatus("リソースパックを作成中...");
@@ -403,32 +428,32 @@ rpUuid
 
 bp.file("manifest.json",JSON.stringify(bpManifest,null,2));
 
-const registrationData=horns.map(horn=>({
-id:horn.id,
-name:horn.name,
-interval:INTERVAL,
-volume:horn.volume
-}));
-
 const mainJs=`
 import { system } from "@minecraft/server";
 
 const HORNS = ${JSON.stringify(registrationData,null,4)};
 const EVENT_ID = "hiro:music_horn_register";
 
-let attempts = 0;
-
-const runId = system.runInterval(() => {
+function registerHorns() {
     for (const horn of HORNS) {
-        system.sendScriptEvent(EVENT_ID, JSON.stringify(horn));
+        try {
+            system.sendScriptEvent(
+                EVENT_ID,
+                JSON.stringify(horn)
+            );
+        } catch (error) {
+            console.warn(\`Horn registration error: \${error}\`);
+        }
     }
+}
 
-    attempts++;
+system.run(() => {
+    registerHorns();
+});
 
-    if (attempts >= 5) {
-        system.clearRun(runId);
-    }
-}, 20);
+system.runInterval(() => {
+    registerHorns();
+}, 100);
 `;
 
 bp.file("scripts/main.js",mainJs);
