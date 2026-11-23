@@ -134,7 +134,7 @@ async function recordGeneratedHorns(count){
 if(!isCounterConfigured())throw new Error("COUNTER_API_URLが設定されていません。");
 const response=await fetch(`${COUNTER_API_URL}/increment`,{
 method:"POST",
-headers:{"Content-Type":"application/json"},
+headers:{"Content-Type":"text/plain;charset=UTF-8"},
 body:JSON.stringify({horns:count})
 });
 if(!response.ok)throw new Error(`HTTP ${response.status}`);
