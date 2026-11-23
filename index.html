@@ -51,8 +51,6 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .remove:hover:not(:disabled){background:#ffe0dd}
 .generate{width:100%;min-height:56px;background:#174b9b;color:#fff;font-size:1rem;padding:14px 18px}
 .generate:hover:not(:disabled){background:#123d80}
-.download{width:100%;min-height:56px;margin-top:12px;background:#147a46;color:#fff;font-size:1rem;padding:14px 18px}
-.download:hover:not(:disabled){background:#10653a}
 .status{margin-top:15px;color:#26364d;font-size:.95rem;white-space:pre-wrap;overflow-wrap:anywhere}
 .progress{height:12px;background:#dce3ed;border-radius:10px;margin-top:14px;overflow:hidden}
 .progress-bar{width:0%;height:100%;background:#174b9b;transition:width .2s}
@@ -96,7 +94,6 @@ button:disabled{opacity:.6;cursor:not-allowed}
 <section class="section" aria-labelledby="addon-heading">
 <h2 id="addon-heading">アドオンの生成</h2>
 <button class="generate" id="generateBtn" type="button">mcaddon生成</button>
-<button class="download" id="downloadBtn" type="button" hidden>mcaddonをダウンロード</button>
 <div class="progress" id="progress" role="progressbar" aria-label="アドオン生成の進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-bar" id="bar"></div></div>
 <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true">準備ができました。</div>
 <p class="note">音源はOGG Vorbis形式に変換され、サンプル単位で0.200秒（誤差±0.005秒以内）ごとに分割されます。最後の端数部分は短い区間として保存されます。</p>
@@ -107,7 +104,6 @@ button:disabled{opacity:.6;cursor:not-allowed}
 const INTERVAL=0.2;
 const INTERVAL_TOLERANCE=0.005;
 const MAX_HORNS=5;
-let generatedOutput=null;
 // Cloudflare Workerを公開したら、URLをそのAPIのURLに置き換えてください。
 const COUNTER_API_URL="https://music-horn-counter.vndy2ftt7z.workers.dev/api";
 const $=id=>document.getElementById(id);
@@ -155,26 +151,6 @@ function setProgress(value){
 const progressValue=Math.max(0,Math.min(100,value));
 $("bar").style.width=progressValue+"%";
 $("progress").setAttribute("aria-valuenow",String(Math.round(progressValue)));
-}
-
-function downloadGeneratedFile(){
-if(!generatedOutput){
-setStatus("先にmcaddonを生成してください。");
-return;
-}
-
-const url=URL.createObjectURL(generatedOutput);
-const link=document.createElement("a");
-link.href=url;
-link.download="Music_Horn_Maker.mcaddon";
-link.style.display="none";
-document.body.appendChild(link);
-link.click();
-link.remove();
-
-// Chromeなどがダウンロードを開始する時間を確保してからURLを破棄する。
-setTimeout(()=>URL.revokeObjectURL(url),60000);
-setStatus("ダウンロードを開始しました。ブラウザのダウンロード一覧をご確認ください。");
 }
 
 function uuid(){
@@ -468,8 +444,6 @@ if(button.disabled)return;
 
 button.disabled=true;
 $("addHorn").disabled=true;
-generatedOutput=null;
-$("downloadBtn").hidden=true;
 
 try{
 const horns=readHorns();
@@ -609,21 +583,28 @@ compression:"DEFLATE",
 compressionOptions:{level:6}
 });
 
-generatedOutput=output;
-$("downloadBtn").hidden=false;
-setProgress(100);
-setStatus("生成が完了しました。「mcaddonをダウンロード」を押して保存してください。累計を更新しています…");
-
-recordGeneratedHorns(horns.length).then(()=>{
-if(generatedOutput===output){
-setStatus("生成が完了しました。「mcaddonをダウンロード」を押して保存してください。累計にも反映しました。");
-}
-}).catch(counterError=>{
+let counterRecorded=false;
+try{
+await recordGeneratedHorns(horns.length);
+counterRecorded=true;
+}catch(counterError){
 console.error("生成数の記録に失敗しました:",counterError);
-if(generatedOutput===output){
-setStatus("生成が完了しました。「mcaddonをダウンロード」を押して保存してください。累計の更新に失敗しました。");
 }
-});
+
+const url=URL.createObjectURL(output);
+const link=document.createElement("a");
+link.href=url;
+link.download="Music_Horn_Maker.mcaddon";
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+setTimeout(()=>URL.revokeObjectURL(url),10000);
+
+setProgress(100);
+setStatus(counterRecorded
+?"生成が完了しました。mcaddonファイルを保存し、累計にも反映しました。"
+:"生成が完了しました。mcaddonファイルを保存しましたが、累計の更新に失敗しました。");
 
 }catch(error){
 console.error(error);
@@ -636,7 +617,6 @@ updateHornNumbers();
 
 $("addHorn").addEventListener("click",createHorn);
 $("generateBtn").addEventListener("click",generate);
-$("downloadBtn").addEventListener("click",downloadGeneratedFile);
 createHorn();
 refreshHornTotal();
 </script>
