@@ -26,6 +26,8 @@ body{margin:0;padding:clamp(14px,3vw,28px);background:#f3f6fa;color:#1f2937;font
 header{margin-bottom:24px}
 header h1{margin:0;font-size:clamp(1.5rem,3.5vw,1.9rem);line-height:1.3;color:#16243a}
 header p{color:#40516b;margin:8px 0 0}
+.counter{margin:14px 0 0;padding:12px 16px;border:1px solid #c7d8f5;border-radius:10px;background:#edf3ff;color:#1d3f75;font-weight:700}
+.counter strong{font-size:1.2em;font-variant-numeric:tabular-nums}
 .section{background:#fff;padding:clamp(18px,4vw,24px);border:1px solid #d5dde8;border-radius:16px;margin-bottom:20px;box-shadow:0 3px 12px rgba(26,39,61,.08)}
 .section h2{margin:0 0 18px;font-size:1.15rem;line-height:1.4;color:#182b47}
 .horn-card{border:1px solid #bac7d8;border-radius:12px;padding:18px;margin-bottom:16px;background:#fff}
@@ -70,6 +72,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 <header>
 <h1>Music Horn Maker</h1>
 <p>カスタムミュージックホーンを作成できます。</p>
+<p class="counter" aria-live="polite" aria-atomic="true">これまでに <strong id="hornTotal">—</strong> 個のカスタムホーンが作られてきました。</p>
 </header>
 
 <section class="section required-addon" aria-labelledby="required-addon-heading">
@@ -101,7 +104,44 @@ button:disabled{opacity:.6;cursor:not-allowed}
 const INTERVAL=0.2;
 const INTERVAL_TOLERANCE=0.005;
 const MAX_HORNS=5;
+// Cloudflare Workerを公開したら、URLをそのAPIのURLに置き換えてください。
+const COUNTER_API_URL="https://music-horn-counter.vndy2ftt7z.workers.dev/api";
 const $=id=>document.getElementById(id);
+
+function isCounterConfigured(){
+return COUNTER_API_URL.startsWith("https://")&&!COUNTER_API_URL.includes("YOUR-WORKER");
+}
+
+async function refreshHornTotal(){
+if(!isCounterConfigured()){
+$("hornTotal").textContent="—";
+return;
+}
+
+try{
+const response=await fetch(`${COUNTER_API_URL}/count`,{cache:"no-store"});
+if(!response.ok)throw new Error(`HTTP ${response.status}`);
+const data=await response.json();
+if(!Number.isSafeInteger(data.total)||data.total<0)throw new Error("カウンターの応答が不正です。");
+$("hornTotal").textContent=data.total.toLocaleString("ja-JP");
+}catch(error){
+console.error("カウンターの読み込みに失敗しました:",error);
+$("hornTotal").textContent="—";
+}
+}
+
+async function recordGeneratedHorns(count){
+if(!isCounterConfigured())throw new Error("COUNTER_API_URLが設定されていません。");
+const response=await fetch(`${COUNTER_API_URL}/increment`,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({horns:count})
+});
+if(!response.ok)throw new Error(`HTTP ${response.status}`);
+const data=await response.json();
+if(!Number.isSafeInteger(data.total)||data.total<0)throw new Error("カウンターの応答が不正です。");
+$("hornTotal").textContent=data.total.toLocaleString("ja-JP");
+}
 
 function setStatus(message){
 $("status").textContent=message;
@@ -553,8 +593,18 @@ link.remove();
 
 setTimeout(()=>URL.revokeObjectURL(url),10000);
 
+let counterRecorded=false;
+try{
+await recordGeneratedHorns(horns.length);
+counterRecorded=true;
+}catch(counterError){
+console.error("生成数の記録に失敗しました:",counterError);
+}
+
 setProgress(100);
-setStatus("生成が完了しました。mcaddonファイルを保存しました。");
+setStatus(counterRecorded
+?"生成が完了しました。mcaddonファイルを保存し、累計にも反映しました。"
+:"生成が完了しました。mcaddonファイルを保存しましたが、累計の更新に失敗しました。");
 
 }catch(error){
 console.error(error);
@@ -568,6 +618,7 @@ updateHornNumbers();
 $("addHorn").addEventListener("click",createHorn);
 $("generateBtn").addEventListener("click",generate);
 createHorn();
+refreshHornTotal();
 </script>
 </body>
 </html>
